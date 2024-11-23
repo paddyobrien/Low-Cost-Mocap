@@ -21,9 +21,9 @@ class Cameras:
         f = open(filename)
         self.camera_params = json.load(f)
 
-        self.cameras = Camera(fps=90, resolution=Camera.RES_SMALL, gain=10, exposure=100)
+        self.cameras = Camera(fps=90, resolution=Camera.RES_SMALL, colour=True, gain=10, exposure=100)
         self.num_cameras = len(self.cameras.exposure)
-        print(self.num_cameras)
+        print(f"num cams {self.num_cameras}")
 
         self.is_capturing_points = False
 
@@ -66,7 +66,8 @@ class Cameras:
         self.cameras.gain = [gain] * self.num_cameras
 
     def _camera_read(self):
-        frames, _ = self.cameras.read()
+        frames, _ = self.cameras.read(squeeze=False)
+        #frames = np.array(frames)
 
         for i in range(0, self.num_cameras):
             frames[i] = np.rot90(frames[i], k=self.camera_params[i]["rotation"])
@@ -118,7 +119,7 @@ class Cameras:
                                         "vel": [round(x, 4) for x in filtered_object["vel"].tolist()]
                                     }
                                     with self.serialLock:
-                                        self.ser.write(f"{filtered_object['droneIndex']}{json.dumps(serial_data)}".encode('utf-8'))
+                                        #self.ser.write(f"{filtered_object['droneIndex']}{json.dumps(serial_data)}".encode('utf-8'))
                                         time.sleep(0.001)
                             
                         for filtered_object in filtered_objects:
