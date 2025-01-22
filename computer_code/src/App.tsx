@@ -384,17 +384,11 @@ export default function App() {
 
   return (
     <Container fluid>
-      <Row className="mt-3 mb-3 flex-nowrap" style={{ alignItems: 'center' }}>
-        <Col className="ms-4" style={{ width: 'fit-content' }} md="auto">
-          <h2>MoCap</h2>
-        </Col>
+      <Row >
         <Col>
-          <Toolbar />
-        </Col>
-      </Row>
-      <Row style={{position: "sticky", top: 10, zIndex: 10}}>
-        <Col>
-          <Card className='shadow-sm p-3'>
+          <Card className='shadow-lg'>
+            <Card.Header><h2>Weccap</h2></Card.Header>
+            <Card.Body>
             <Row>
               <Col xs="auto">
               </Col>
@@ -412,7 +406,7 @@ export default function App() {
                 {getCameraButtons(numCams)}
               </Col>
               <Col style={{textAlign: "right"}}>
-              <Badge bg="warning">FPS: {fps}</Badge>
+              {cameraStreamRunning && <Badge bg="warning">FPS: {fps}</Badge>}
               
               </Col>
             </Row>
@@ -421,17 +415,15 @@ export default function App() {
                 <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
               </Col>
             </Row>
+            </Card.Body>
           </Card>
         </Col>
       </Row>
       <Row className='pt-3'>
         <Col xs={4}>
-          <Card className='shadow-sm p-3 h-100'>
-            <Row>
-              <Col xs="auto">
-                <h4>Camera Settings</h4>
-              </Col>
-            </Row>
+        <Card className='shadow-lg h-100'>
+          <Card.Header>Camera settings</Card.Header>
+          <Card.Body>
             <Row className='pt-3'>
               <Col xs="4">
                 <Form onChange={updateCameraSettings} className='ps-3'>
@@ -446,9 +438,16 @@ export default function App() {
                 </Form>
               </Col>
             </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col xs={4}>
+          <Card className='shadow-lg h-100'>
+            <Card.Header>Calibration</Card.Header>
+            <Card.Body>
             <Row>
               <Col xs="auto">
-                <h4>Live Triangulation</h4>
+                <h5>Live Triangulation</h5>
               </Col>
               <Col>
                 <Button
@@ -473,7 +472,7 @@ export default function App() {
             </Row>
             <Row>
               <Col xs="auto">
-                <h4>Locate Objects</h4>
+                <h5>Locate Objects</h5>
               </Col>
               <Col>
                 <Button
@@ -491,7 +490,7 @@ export default function App() {
             </Row>
             <Row>
               <Col xs="auto">
-                <h4>Set Scale Using Points</h4>
+                <h5>Set Scale Using Points</h5>
               </Col>
               <Col>
                 <Button
@@ -508,7 +507,7 @@ export default function App() {
             </Row>
             <Row>
               <Col xs="auto">
-                <h4>Acquire Floor</h4>
+                <h5>Acquire Floor</h5>
               </Col>
               <Col>
                 <Button
@@ -525,7 +524,7 @@ export default function App() {
             </Row>
             <Row>
               <Col xs="auto">
-                <h4>Set Origin</h4>
+                <h5>Set Origin</h5>
               </Col>
               <Col>
                 <Button
@@ -542,7 +541,7 @@ export default function App() {
             </Row>
             <Row>
               <Col xs="auto">
-                <h4>Collect points for camera pose calibration</h4>
+                <h5>Collect points for camera pose calibration</h5>
               </Col>
               <Col>
                 <Tooltip id="collect-points-for-pose-button-tooltip" />
@@ -575,6 +574,13 @@ export default function App() {
                 </Button>
               </Col>
             </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col xs={4}>
+          <Card className='shadow-lg h-100'>
+            <Card.Header>Configuration</Card.Header>
+            <Card.Body>
             <Row className='pt-3'>
               <Col xs={4} className='pt-2'>
                 Camera Poses:
@@ -597,9 +603,10 @@ export default function App() {
                 />
               </Col>
             </Row>
+            </Card.Body>
           </Card>
         </Col>
-        <Col xs={4}>
+        {/* <Col xs={4}>
           <Card className='shadow-sm p-3 h-100'>
             <Row>
               <Col>
@@ -775,8 +782,8 @@ export default function App() {
               </Col>
             </Row>
           </Card>
-        </Col>
-        <Col xs={4}>
+        </Col> */}
+        {/* <Col xs={4}>
           <Card className='shadow-sm p-3 h-100'>
             <Row>
               <Col xs="auto">
@@ -1190,15 +1197,15 @@ export default function App() {
               </Col>
             </Row>
           </Card>
-        </Col>
+        </Col> */}
       </Row>
-      <Row className='pt-3'>
+      {/* <Row className='pt-3'>
         <Col>
           <Card className='shadow-sm p-3'>
             <Chart filteredObjectsRef={filteredObjects} droneSetpointHistoryRef={droneSetpointHistory} objectPointCount={objectPointCount} dronePID={dronePID.map(x => parseFloat(x))} droneArmed={droneArmed} currentDroneIndex={currentDroneIndex} />
           </Card>
         </Col>
-      </Row>
+      </Row> */}
       <Row className='pt-3'>
         <Col>
           <Card className='shadow-sm p-3'>
