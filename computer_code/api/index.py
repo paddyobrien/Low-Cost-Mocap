@@ -30,13 +30,18 @@ num_objects = 2
 
 @app.route("/api/camera-stream")
 def camera_stream():
+    camera = request.args.get('camera')
+    if camera is None:
+        print("is none")
+    else:
+        camera = int(camera)
     cameras = Cameras.instance()
     cameras.set_socketio(socketio)
     #cameras.set_ser(ser)
     cameras.set_serialLock(serialLock)
     cameras.set_num_objects(num_objects)
-    
-    def gen(cameras):
+
+    def gen(cameras, camera):
         frequency = 150
         loop_interval = 1.0 / frequency
         last_run_time = 0
@@ -52,13 +57,13 @@ def camera_stream():
             if time_now - last_run_time < loop_interval:
                 time.sleep(last_run_time - time_now + loop_interval)
             last_run_time = time.time()
-            frames = cameras.get_frames()
+            frames = cameras.get_frames(camera)
             jpeg_frame = cv.imencode('.jpg', frames)[1].tostring()
 
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + jpeg_frame + b'\r\n')
 
-    return Response(gen(cameras), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(gen(cameras, camera), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/api/trajectory-planning", methods=["POST"])
 def trajectory_planning_api():
@@ -291,8 +296,9 @@ def start_or_stop_locating_objects(data):
 def determine_scale(data):
     object_points = data["objectPoints"]
     camera_poses = data["cameraPoses"]
-    actual_distance = 0.15
+    actual_distance = 0.06
     observed_distances = []
+    print(object_points)
 
     for object_points_i in object_points:
         if len(object_points_i) != 2:

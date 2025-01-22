@@ -1,17 +1,15 @@
 "use client";
 
-import { FormEventHandler, useState, createRef, Ref, useRef, useEffect } from 'react';
-import { Button, Card, Col, Container, Row } from 'react-bootstrap';
+import { FormEventHandler, useState, useRef, useEffect } from 'react';
+import { Badge, Button, Card, Col, Container, Row } from 'react-bootstrap';
 import Toolbar from './components/Toolbar';
 import Form from 'react-bootstrap/Form';
 import { Tooltip } from 'react-tooltip'
 import CameraWireframe from './components/CameraWireframe';
-import { io } from 'socket.io-client';
-import { Canvas, useFrame } from '@react-three/fiber'
-import { Stats, OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import Points from './components/Points';
 import { socket } from './shared/styles/scripts/socket';
-import { matrix, mean, multiply, rotationMatrix } from 'mathjs';
 import Objects from './components/Objects';
 import Chart from './components/chart';
 import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoints';
@@ -19,6 +17,7 @@ import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoint
 const TRAJECTORY_PLANNING_TIMESTEP = 0.05
 const LAND_Z_HEIGHT = 0.075
 const NUM_DRONES = 2
+const ALL_CAMS = "all"
 
 export default function App() {
   const [cameraStreamRunning, setCameraStreamRunning] = useState(false);
@@ -28,6 +27,8 @@ export default function App() {
 
   const [capturingPointsForPose, setCapturingPointsForPose] = useState(false);
   const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
+  const [numCams, setNumCams] = useState(0);
+  const [activeCam, setActiveCam] = useState(ALL_CAMS);
 
   const [isTriangulatingPoints, setIsTriangulatingPoints] = useState(false);
   const [isLocatingObjects, setIsLocatingObjects] = useState(false);
@@ -85,6 +86,16 @@ export default function App() {
       socket.off("image-points")
     }
   }, [capturedPointsForPose])
+
+  useEffect(() => {
+    socket.on("num-cams", (data) => {
+      setNumCams(data)
+    })
+
+    return () => {
+      socket.off("num-cams")
+    }
+  }, [numCams])
 
   useEffect(() => {
     let count = 0
@@ -341,6 +352,36 @@ export default function App() {
     socket.emit("triangulate-points", { startOrStop, cameraPoses, toWorldCoordsMatrix })
   }
 
+  const getCameraButtons = (numCams: number) => {
+    let content = [];
+    content.push(<Button
+      size='sm'
+      className='me-3'
+      variant={"outline-primary"}
+      active={activeCam === ALL_CAMS}
+      onClick={() => {
+        setActiveCam(ALL_CAMS);
+      }}
+    >
+      All
+    </Button>
+    )
+    for (let i = 0; i < numCams; i++) {
+      content.push(<Button
+        size='sm'
+        className='me-3'
+        variant={"outline-primary"}
+        active={activeCam===i}
+        onClick={() => {
+          setActiveCam(i);
+        }}
+      >
+        Camera {i}
+      </Button>);
+    }
+    return content;
+  }
+
   return (
     <Container fluid>
       <Row className="mt-3 mb-3 flex-nowrap" style={{ alignItems: 'center' }}>
@@ -351,30 +392,33 @@ export default function App() {
           <Toolbar />
         </Col>
       </Row>
-      <Row>
+      <Row style={{position: "sticky", top: 10, zIndex: 10}}>
         <Col>
           <Card className='shadow-sm p-3'>
             <Row>
               <Col xs="auto">
-                <h4>Camera Stream</h4>
               </Col>
               <Col>
                 <Button
                   size='sm'
                   className='me-3'
-                  variant={cameraStreamRunning ? "outline-danger" : "outline-primary"}
+                  variant={cameraStreamRunning ? "outline-danger" : "outline-success"}
                   onClick={() => {
                     setCameraStreamRunning(!cameraStreamRunning);
                   }}
                 >
-                  {cameraStreamRunning ? "Stop" : "Start"}
+                  {cameraStreamRunning ? "Stop" : "Start camera stream"}
                 </Button>
-                FPS: {fps}
+                {getCameraButtons(numCams)}
+              </Col>
+              <Col style={{textAlign: "right"}}>
+              <Badge bg="warning">FPS: {fps}</Badge>
+              
               </Col>
             </Row>
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>
               <Col>
-                <img src={cameraStreamRunning ? "http://localhost:3001/api/camera-stream" : ""} />
+                <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
               </Col>
             </Row>
           </Card>

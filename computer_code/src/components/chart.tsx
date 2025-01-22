@@ -181,7 +181,6 @@ export default function Chart({filteredObjectsRef, droneSetpointHistoryRef, obje
   let chartRef = useRef<ChartJS<"line", number[], number> | null>(null);
 
   useEffect(() => {
-    console.log(filteredObjectsRef.current)
     let sliced = filteredObjectsRef.current.length <= 15 ? [] : filteredObjectsRef.current.slice(15)
     const length = sliced.length
     if (length === 0) {
@@ -192,7 +191,6 @@ export default function Chart({filteredObjectsRef, droneSetpointHistoryRef, obje
       const lastFilteredPoint = sliced[length-1].filter(x => x.droneIndex === currentDroneIndex)[0]
   
       if (lastFilteredPoint !== undefined) {
-        console.log(lastFilteredPoint)
         data.datasets[0].data.push(lastFilteredPoint["pos"][0])
         data.datasets[1].data.push(lastFilteredPoint["pos"][1])
         data.datasets[2].data.push(lastFilteredPoint["pos"][2])
