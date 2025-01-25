@@ -390,8 +390,6 @@ export default function App() {
             <Card.Header><h2>Weccap</h2></Card.Header>
             <Card.Body>
             <Row>
-              <Col xs="auto">
-              </Col>
               <Col>
                 <Button
                   size='sm'
@@ -406,7 +404,7 @@ export default function App() {
                 {getCameraButtons(numCams)}
               </Col>
               <Col style={{textAlign: "right"}}>
-              {cameraStreamRunning && <Badge bg="warning">FPS: {fps}</Badge>}
+              {cameraStreamRunning && <Badge style={{minWidth: 80}} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
               
               </Col>
             </Row>
