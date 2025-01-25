@@ -7,7 +7,6 @@ import json
 import os
 import time
 import numpy as np
-import cv2 as cv
 from KalmanFilter import KalmanFilter
 from pseyepy import Camera
 from Singleton import Singleton
@@ -73,14 +72,15 @@ class Cameras:
             frames[i] = np.rot90(frames[i], k=self.camera_params[i]["rotation"])
             frames[i] = make_square(frames[i])
             frames[i] = cv.undistort(frames[i], self.get_camera_params(i)["intrinsic_matrix"], self.get_camera_params(i)["distortion_coef"])
+            #frames[i] = cv.medianBlur(frames[i],9)
             #frames[i] = cv.GaussianBlur(frames[i],(9,9),0)
             kernel = np.array([[-2,-1,-1,-1,-2],
-                               [-1,1,3,1,-1],
-                               [-1,3,4,3,-1],
-                               [-1,1,3,1,-1],
+                               [-1, 1, 3, 1,-1],
+                               [-1, 3, 4, 3,-1],
+                               [-1, 1, 3, 1,-1],
                                [-2,-1,-1,-1,-2]])
-            # frames[i] = cv.filter2D(frames[i], -1, kernel)
-            # frames[i] = cv.cvtColor(frames[i], cv.COLOR_RGB2BGR)
+            frames[i] = cv.filter2D(frames[i], -1, kernel)
+            frames[i] = cv.cvtColor(frames[i], cv.COLOR_RGB2BGR)
 
         if (self.is_capturing_points):
             image_points = []
@@ -137,8 +137,7 @@ class Cameras:
 
     def get_frames(self, camera=None):
         frames = self._camera_read()
-        if camera == None:     
-            #frames = [add_white_border(frame, 5) for frame in frames]
+        if camera == None:
             return np.hstack(frames)
         return frames[camera]
 
