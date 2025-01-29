@@ -12,6 +12,7 @@ import { socket } from './shared/styles/scripts/socket';
 import Objects from './components/Objects';
 import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoints';
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
+import PosePoints from './components/PosePoints';
 
 const NUM_DRONES = 2
 const ALL_CAMS = "all"
@@ -25,6 +26,7 @@ export default function App() {
   const [capturingPoints, setCapturingPoints] = useState(false);
   const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
   const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
+  const [parsedCapturedPointsForPose, setParsedCapturedPointsForPost] = useState<Array<Array<Array<number>>>>([]);
   const [numCams, setNumCams] = useState(0);
   const [activeCam, setActiveCam] = useState(ALL_CAMS);
 
@@ -61,7 +63,9 @@ export default function App() {
   useEffect(() => {
     const handler = (data: any) => {
       if (captureNextPointForPose) {
-        setCapturedPointsForPose(`${capturedPointsForPose}${JSON.stringify(data)},`);
+        const newVal = `${capturedPointsForPose}${JSON.stringify(data)},`;
+        setCapturedPointsForPose(newVal);
+        setParsedCapturedPointsForPost(JSON.parse(`[${newVal.slice(0, -1)}]`))
         console.log(capturedPointsForPose);
         setCaptureNextPointForPose(false);
       }
@@ -85,7 +89,6 @@ export default function App() {
 
   useEffect(() => {
     socket.on("to-world-coords-matrix", (data) => {
-      console.log(data["to_world_coords_matrix"])
       setToWorldCoordsMatrix(data["to_world_coords_matrix"])
       setObjectPointCount(objectPointCount + 1)
     })
@@ -210,8 +213,9 @@ export default function App() {
               </Col>
             </Row>
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>
-              <Col>
+              <Col style={{"position": "relative", paddingLeft: 10}}>
                 <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
+                <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />
               </Col>
             </Row>
             </Card.Body>
@@ -300,6 +304,7 @@ export default function App() {
                   disabled={countOfPointsForCameraPoseCalibration === 0}
                   onClick={() => {
                     setCapturedPointsForPose("")
+                    setParsedCapturedPointsForPost([]);
                   }}>
                   Clear points
                 </Button>
