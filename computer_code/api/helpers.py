@@ -12,15 +12,20 @@ from pseyepy import Camera
 from Singleton import Singleton
 
 
+dirname = os.path.dirname(__file__)
+filename = os.path.join(dirname, "camera-params.json")
+f = open(filename)
+camera_params = json.load(f)
+
+intrinsic = np.array(camera_params[0]["intrinsic_matrix"])
+distortion_coef = np.array(camera_params[0]["distortion_coef"])
+
 @Singleton
 class Cameras:
     def __init__(self):
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "camera-params.json")
-        f = open(filename)
-        self.camera_params = json.load(f)
+        self.camera_params = camera_params
 
-        self.cameras = Camera(fps=90, resolution=Camera.RES_SMALL, colour=True, gain=10, exposure=100)
+        self.cameras = Camera(fps=90, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100)
         self.num_cameras = len(self.cameras.exposure)
         print(f"num cams {self.num_cameras}")
 
@@ -111,16 +116,7 @@ class Cameras:
                         
                         if len(filtered_objects) != 0:
                             for filtered_object in filtered_objects:
-                                if self.drone_armed[filtered_object['droneIndex']]:
-                                    filtered_object["heading"] = round(filtered_object["heading"], 4)
-
-                                    serial_data = { 
-                                        "pos": [round(x, 4) for x in filtered_object["pos"].tolist()] + [filtered_object["heading"]],
-                                        "vel": [round(x, 4) for x in filtered_object["vel"].tolist()]
-                                    }
-                                    with self.serialLock:
-                                        #self.ser.write(f"{filtered_object['droneIndex']}{json.dumps(serial_data)}".encode('utf-8'))
-                                        time.sleep(0.001)
+                                filtered_object["heading"] = round(filtered_object["heading"], 4)
                             
                         for filtered_object in filtered_objects:
                             filtered_object["vel"] = filtered_object["vel"].tolist()
@@ -213,8 +209,6 @@ def calculate_reprojection_errors(image_points, object_points, camera_poses):
 
 
 def calculate_reprojection_error(image_points, object_point, camera_poses):
-    cameras = Cameras.instance()
-
     image_points = np.array(image_points)
     none_indicies = np.where(np.all(image_points == None, axis=1))[0]
     image_points = np.delete(image_points, none_indicies, axis=0)
@@ -233,7 +227,7 @@ def calculate_reprojection_error(image_points, object_point, camera_poses):
             np.expand_dims(object_point, axis=0).astype(np.float32), 
             np.array(camera_pose["R"], dtype=np.float64), 
             np.array(camera_pose["t"], dtype=np.float64), 
-            cameras.get_camera_params(i)["intrinsic_matrix"], 
+            intrinsic, 
             np.array([])
         )
         projected_img_point = projected_img_points[:,0,:][0]
@@ -241,9 +235,8 @@ def calculate_reprojection_error(image_points, object_point, camera_poses):
     
     return errors.mean()
 
-
-def bundle_adjustment(image_points, camera_poses, socketio):
-    cameras = Cameras.instance()
+# https://www.cs.jhu.edu/~misha/ReadingSeminar/Papers/Triggs00.pdf
+def bundle_adjustment(image_points, camera_poses):
 
     def params_to_camera_poses(params):
         focal_distances = []
@@ -264,36 +257,34 @@ def bundle_adjustment(image_points, camera_poses, socketio):
 
     def residual_function(params):
         camera_poses, focal_distances = params_to_camera_poses(params)
-        for i in range(0, len(camera_poses)):
-            intrinsic = cameras.get_camera_params(i)["intrinsic_matrix"]
-            intrinsic[0, 0] = focal_distances[i]
-            intrinsic[1, 1] = focal_distances[i]
+        # for i in range(0, len(camera_poses)):
+        #     intrinsic = cameras.get_camera_params(i)["intrinsic_matrix"]
+        #     intrinsic[0, 0] = focal_distances[i]
+        #     intrinsic[1, 1] = focal_distances[i]
             # cameras.set_camera_params(i, intrinsic)
         object_points = triangulate_points(image_points, camera_poses)
         errors = calculate_reprojection_errors(image_points, object_points, camera_poses)
         errors = errors.astype(np.float32)
-        socketio.emit("camera-pose", {"camera_poses": camera_pose_to_serializable(camera_poses)})
         
         return errors
 
-    focal_distance = cameras.get_camera_params(0)["intrinsic_matrix"][0,0]
+    focal_distance = intrinsic[0,0]
     init_params = np.array([focal_distance])
     for i, camera_pose in enumerate(camera_poses[1:]):
         rot_vec = Rotation.as_rotvec(Rotation.from_matrix(camera_pose["R"])).flatten()
-        focal_distance = cameras.get_camera_params(i)["intrinsic_matrix"][0,0]
+        focal_distance = intrinsic[0,0]
         init_params = np.concatenate([init_params, [focal_distance]])
         init_params = np.concatenate([init_params, rot_vec])
         init_params = np.concatenate([init_params, camera_pose["t"].flatten()])
 
     res = optimize.least_squares(
-        residual_function, init_params, verbose=2, loss="cauchy", ftol=1E-2
+        residual_function, init_params, verbose=2, loss="cauchy", ftol=1E-4
     )
     return params_to_camera_poses(res.x)[0]
     
 
 def triangulate_point(image_points, camera_poses):
     image_points = np.array(image_points)
-    cameras = Cameras.instance()
     none_indicies = np.where(np.all(image_points == None, axis=1))[0]
     image_points = np.delete(image_points, none_indicies, axis=0)
     camera_poses = np.delete(camera_poses, none_indicies, axis=0)
@@ -305,7 +296,7 @@ def triangulate_point(image_points, camera_poses):
 
     for i, camera_pose in enumerate(camera_poses):
         RT = np.c_[camera_pose["R"], camera_pose["t"]]
-        P = cameras.camera_params[i]["intrinsic_matrix"] @ RT
+        P = intrinsic @ RT
         Ps.append(P)
 
     # https://temugeb.github.io/computer_vision/2021/02/06/direct-linear-transorms.html
@@ -338,8 +329,6 @@ def triangulate_points(image_points, camera_poses):
 
 
 def find_point_correspondance_and_object_points(image_points, camera_poses, frames):
-    cameras = Cameras.instance()
-
     for image_points_i in image_points:
         try:
             image_points_i.remove([None, None])
@@ -352,7 +341,7 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
     Ps = [] # projection matricies
     for i, camera_pose in enumerate(camera_poses):
         RT = np.c_[camera_pose["R"], camera_pose["t"]]
-        P = cameras.camera_params[i]["intrinsic_matrix"] @ RT
+        P = intrinsic @ RT
         Ps.append(P)
 
     root_image_points = [{"camera": 0, "point": point} for point in image_points[0]]
@@ -423,8 +412,8 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
 
 
 def locate_objects(object_points, errors):
-    dist1 = 0.03
-    dist2 = 0.06
+    dist1 = 0.085
+    dist2 = 0.132
 
     distance_matrix = np.zeros((object_points.shape[0], object_points.shape[0]))
     already_matched_points = []

@@ -65,101 +65,6 @@ def camera_stream():
 
     return Response(gen(cameras, camera), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route("/api/trajectory-planning", methods=["POST"])
-def trajectory_planning_api():
-    data = json.loads(request.data)
-
-    waypoint_groups = [] # grouped by continuious movement (no stopping)
-    for waypoint in data["waypoints"]:
-        stop_at_waypoint = waypoint[-1]
-        if stop_at_waypoint:
-            waypoint_groups.append([waypoint[:3*num_objects]])
-        else:
-            waypoint_groups[-1].append(waypoint[:3*num_objects])
-    
-    setpoints = []
-    for i in range(0, len(waypoint_groups)-1):
-        start_pos = waypoint_groups[i][0]
-        end_pos = waypoint_groups[i+1][0]
-        waypoints = waypoint_groups[i][1:]
-        setpoints += plan_trajectory(start_pos, end_pos, waypoints, data["maxVel"], data["maxAccel"], data["maxJerk"], data["timestep"])
-
-    return json.dumps({
-        "setpoints": setpoints
-    })
-
-def plan_trajectory(start_pos, end_pos, waypoints, max_vel, max_accel, max_jerk, timestep):
-    otg = Ruckig(3*num_objects, timestep, len(waypoints))  # DoFs, timestep, number of waypoints
-    inp = InputParameter(3*num_objects)
-    out = OutputParameter(3*num_objects, len(waypoints))
-
-    inp.current_position = start_pos
-    inp.current_velocity = [0,0,0]*num_objects
-    inp.current_acceleration = [0,0,0]*num_objects
-
-    inp.target_position = end_pos
-    inp.target_velocity = [0,0,0]*num_objects
-    inp.target_acceleration = [0,0,0]*num_objects
-
-    inp.intermediate_positions = waypoints
-
-    inp.max_velocity = max_vel*num_objects
-    inp.max_acceleration = max_accel*num_objects
-    inp.max_jerk = max_jerk*num_objects
-
-    setpoints = []
-    res = Result.Working
-    while res == Result.Working:
-        res = otg.update(inp, out)
-        setpoints.append(copy.copy(out.new_position))
-        out.pass_to_input(inp)
-
-    return setpoints
-
-@socketio.on("arm-drone")
-def arm_drone(data):
-    global cameras_init
-    if not cameras_init:
-        return
-    
-    Cameras.instance().drone_armed = data["droneArmed"]
-    for droneIndex in range(0, num_objects):
-        serial_data = {
-            "armed": data["droneArmed"][droneIndex],
-        }
-        # with serialLock:
-        #     ser.write(f"{str(droneIndex)}{json.dumps(serial_data)}".encode('utf-8'))
-        
-        time.sleep(0.01)
-
-@socketio.on("set-drone-pid")
-def arm_drone(data):
-    serial_data = {
-        "pid": [float(x) for x in data["dronePID"]],
-    }
-    # with serialLock:
-    #     ser.write(f"{str(data['droneIndex'])}{json.dumps(serial_data)}".encode('utf-8'))
-    #     time.sleep(0.01)
-
-@socketio.on("set-drone-setpoint")
-def arm_drone(data):
-    serial_data = {
-        "setpoint": [float(x) for x in data["droneSetpoint"]],
-    }
-    # with serialLock:
-    #     ser.write(f"{str(data['droneIndex'])}{json.dumps(serial_data)}".encode('utf-8'))
-    #     time.sleep(0.01)
-
-@socketio.on("set-drone-trim")
-def arm_drone(data):
-    serial_data = {
-        "trim": [int(x) for x in data["droneTrim"]],
-    }
-    # with serialLock:
-    #     ser.write(f"{str(data['droneIndex'])}{json.dumps(serial_data)}".encode('utf-8'))
-    #     time.sleep(0.01)
-
-
 @socketio.on("acquire-floor")
 def acquire_floor(data):
     cameras = Cameras.instance()
@@ -235,6 +140,7 @@ def capture_points(data):
 def calculate_camera_pose(data):
     cameras = Cameras.instance()
     image_points = np.array(data["cameraPoints"])
+    
     image_points_t = image_points.transpose((1, 0, 2))
 
     camera_poses = [{
@@ -248,7 +154,10 @@ def calculate_camera_pose(data):
         camera1_image_points = np.take(camera1_image_points, not_none_indicies, axis=0).astype(np.float32)
         camera2_image_points = np.take(camera2_image_points, not_none_indicies, axis=0).astype(np.float32)
 
-        F, _ = cv.findFundamentalMat(camera1_image_points, camera2_image_points, cv.FM_RANSAC, 1, 0.99999)
+        F, _ = cv.findFundamentalMat(camera1_image_points, camera2_image_points, cv.FM_RANSAC, 3, 0.99999)
+        if F is None:
+            socketio.emit("error", "Could not compute fundamental matrix")
+            return
         E = cv.sfm.essentialFromFundamental(F, cameras.get_camera_params(0)["intrinsic_matrix"], cameras.get_camera_params(1)["intrinsic_matrix"])
         possible_Rs, possible_ts = cv.sfm.motionFromEssential(E)
 
@@ -256,8 +165,22 @@ def calculate_camera_pose(data):
         t = None
         max_points_infront_of_camera = 0
         for i in range(0, 4):
-            object_points = triangulate_points(np.hstack([np.expand_dims(camera1_image_points, axis=1), np.expand_dims(camera2_image_points, axis=1)]), np.concatenate([[camera_poses[-1]], [{"R": possible_Rs[i], "t": possible_ts[i]}]]))
-            object_points_camera_coordinate_frame = np.array([possible_Rs[i].T @ object_point for object_point in object_points])
+            object_points = triangulate_points(
+                np.hstack([
+                    np.expand_dims(camera1_image_points, axis=1), 
+                    np.expand_dims(camera2_image_points, axis=1)
+                ]), 
+                np.concatenate([
+                    [camera_poses[-1]], 
+                    [{
+                        "R": possible_Rs[i], 
+                        "t": possible_ts[i]}
+                    ]
+                ])
+            )
+            object_points_camera_coordinate_frame = np.array([
+                possible_Rs[i].T @ object_point for object_point in object_points
+            ])
 
             points_infront_of_camera = np.sum(object_points[:,2] > 0) + np.sum(object_points_camera_coordinate_frame[:,2] > 0)
 
@@ -274,12 +197,13 @@ def calculate_camera_pose(data):
             "t": t
         })
 
-    camera_poses = bundle_adjustment(image_points, camera_poses, socketio)
+    camera_poses = bundle_adjustment(image_points, camera_poses)
 
     object_points = triangulate_points(image_points, camera_poses)
     error = np.mean(calculate_reprojection_errors(image_points, object_points, camera_poses))
 
     socketio.emit("camera-pose", {"camera_poses": camera_pose_to_serializable(camera_poses)})
+    socketio.emit("success", f"Camera pose updated {error}")
 
 @socketio.on("locate-objects")
 def start_or_stop_locating_objects(data):
@@ -296,9 +220,8 @@ def start_or_stop_locating_objects(data):
 def determine_scale(data):
     object_points = data["objectPoints"]
     camera_poses = data["cameraPoses"]
-    actual_distance = 0.06
+    actual_distance = 0.085
     observed_distances = []
-    print(object_points)
 
     for object_points_i in object_points:
         if len(object_points_i) != 2:

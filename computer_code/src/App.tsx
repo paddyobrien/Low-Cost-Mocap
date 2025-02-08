@@ -88,6 +88,20 @@ export default function App() {
   }, [numCams])
 
   useEffect(() => {
+    socket.on("error", (msg) => {
+      console.log(msg)
+    });
+    socket.on("success", (msg) => {
+      console.log(msg)
+    });
+
+
+    return () => {
+      socket.off("num-cams")
+    }
+  }, [numCams])
+
+  useEffect(() => {
     socket.on("to-world-coords-matrix", (data) => {
       setToWorldCoordsMatrix(data["to_world_coords_matrix"])
       setObjectPointCount(objectPointCount + 1)

@@ -20,7 +20,10 @@ export default function PosePoints({numCams, points}:{numCams: number, points: A
     if (numCams > 0) {
         const context = canvas.getContext('2d')!;
         context.clearRect(0, 0, canvas.width, canvas.height)
-        context.fillStyle =  "#00FF00";
+        context.fillStyle =  "#FFFFFF";
+        context.fillRect(WIDTH, 0, 1, canvas.height)
+        context.fillRect(WIDTH * 2, 0, 1, canvas.height)
+        context.fillRect(WIDTH * 3, 0, 1, canvas.height)
         points.forEach((point) => {
             let angles = numberOfAngles(point);
             if (angles == numCams) {
