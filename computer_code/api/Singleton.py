@@ -1,4 +1,3 @@
-
 class Singleton:
     """
     A non-thread-safe helper class to ease implementing singletons.
@@ -32,7 +31,7 @@ class Singleton:
             return self._instance
 
     def __call__(self):
-        raise TypeError('Singletons must be accessed through `instance()`.')
+        raise TypeError("Singletons must be accessed through `instance()`.")
 
     def __instancecheck__(self, inst):
         return isinstance(inst, self._decorated)
