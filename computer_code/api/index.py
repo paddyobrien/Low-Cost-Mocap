@@ -24,8 +24,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 cameras_init = False
 
-num_objects = 2
-
 
 @app.route("/api/camera-stream")
 def camera_stream():
@@ -36,7 +34,6 @@ def camera_stream():
         camera = int(camera)
     cameras = Cameras.instance()
     cameras.set_socketio(socketio)
-    cameras.set_num_objects(num_objects)
 
     def gen(cameras, camera):
         frequency = 150

@@ -35,7 +35,6 @@ export default function App() {
 
   const objectPoints = useRef<Array<Array<Array<number>>>>([])
   const filteredObjects = useRef<object[][]>([])
-  const droneSetpointHistory = useRef<number[][]>([])
   const objectPointErrors = useRef<Array<Array<number>>>([])
   const objects = useRef<Array<Array<Object>>>([])
   const [objectPointCount, setObjectPointCount] = useState(0);
@@ -120,7 +119,6 @@ export default function App() {
       }
       objectPointErrors.current.push(data["errors"])
       objects.current.push(data["objects"])
-      droneSetpointHistory.current.push(droneSetpointWithMotion)
       setObjectPointCount(objectPointCount + 1)
     })
 
@@ -339,7 +337,6 @@ export default function App() {
                       objectPointErrors.current = []
                       objects.current = []
                       filteredObjects.current = []
-                      droneSetpointHistory.current = []
                     }
                     setIsTriangulatingPoints(!isTriangulatingPoints);
                     startLiveMocap(isTriangulatingPoints ? "stop" : "start");

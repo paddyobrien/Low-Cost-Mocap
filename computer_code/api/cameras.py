@@ -24,8 +24,6 @@ class Cameras:
 
         self.drone_armed = []
 
-        self.num_objects = None
-
         self.kalman_filter = None
 
         self.socketio = None
@@ -36,10 +34,6 @@ class Cameras:
     def set_socketio(self, socketio):
         self.socketio = socketio
         self.socketio.emit("num-cams", self.num_cameras)
-
-    def set_num_objects(self, num_objects):
-        self.num_objects = num_objects
-        self.drone_armed = [False for i in range(0, self.num_objects)]
 
     def edit_settings(self, exposure, gain):
         self.cameras.exposure = [exposure] * self.num_cameras
@@ -178,7 +172,7 @@ class Cameras:
         self.is_capturing_points = True
         self.is_triangulating_points = True
         self.camera_poses = camera_poses
-        self.kalman_filter = KalmanFilter(self.num_objects)
+        self.kalman_filter = KalmanFilter(1)
 
     def stop_trangulating_points(self):
         self.is_capturing_points = False
