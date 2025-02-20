@@ -3,9 +3,6 @@ from scipy import linalg, optimize, signal
 import cv2 as cv
 from scipy.spatial.transform import Rotation
 import copy
-import json
-import os
-import time
 import numpy as np
 from settings import intrinsic_matrix, distortion_coef
 
@@ -229,8 +226,9 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
 
 
 def locate_objects(object_points, errors):
-    dist1 = 0.085
-    dist2 = 0.132
+    dist = 0.089
+    dist1 = 0.089
+    dist2 = 0.133
 
     distance_matrix = np.zeros((object_points.shape[0], object_points.shape[0]))
     already_matched_points = []
@@ -241,66 +239,94 @@ def locate_objects(object_points, errors):
             distance_matrix[i, j] = np.sqrt(
                 np.sum((object_points[i] - object_points[j]) ** 2)
             )
-
+    print("----")
+    print(distance_matrix)
+    print("----")
     for i in range(0, object_points.shape[0]):
         if i in already_matched_points:
             continue
+        matches = np.abs(distance_matrix[i] - dist) < 0.025
+        if np.any(matches):
+            best_match_i = np.argmax(matches)
 
-        distance_deltas = np.abs(distance_matrix[i] - dist1)
-        num_matches = distance_deltas < 0.025
-        matches_index = np.where(distance_deltas < 0.025)[0]
-        if np.sum(num_matches) >= 2:
-            for possible_pair in cartesian_product(matches_index, matches_index):
-                pair_distance = np.sqrt(
-                    np.sum(
-                        (
-                            object_points[possible_pair[0]]
-                            - object_points[possible_pair[1]]
-                        )
-                        ** 2
-                    )
-                )
+            already_matched_points.append(i)
+            already_matched_points.append(best_match_i)
 
-                # if the pair isnt the correct distance apart
-                if np.abs(pair_distance - dist2) > 0.025:
-                    continue
+            location = (object_points[i]+object_points[best_match_i])/2
+            error = np.mean([errors[i], errors[best_match_i]])
 
-                best_match_1_i = possible_pair[0]
-                best_match_2_i = possible_pair[1]
+            heading_vec = object_points[best_match_i] - object_points[i]
+            heading_vec /= linalg.norm(heading_vec)
+            heading = np.arctan2(heading_vec[1], heading_vec[0])
 
-                already_matched_points.append(i)
-                already_matched_points.append(best_match_1_i)
-                already_matched_points.append(best_match_2_i)
+            heading = heading - np.pi if heading > np.pi/2 else heading
+            heading = heading + np.pi if heading < -np.pi/2 else heading
 
-                location = (
-                    object_points[best_match_1_i] + object_points[best_match_2_i]
-                ) / 2
-                error = np.mean(
-                    [errors[i], errors[best_match_1_i], errors[best_match_2_i]]
-                )
+            objects.append({
+                "pos": location,
+                "heading": -heading,
+                "error": error,
+                "droneIndex": 0
+            })
+        # distance_deltas = np.abs(distance_matrix[i] - dist1)
+        # print(distance_deltas < 0.025)
+        # num_matches = distance_deltas < 0.025
+        
+        # matches_index = np.where(distance_deltas < 0.025)[0]
+        # print("----")
+        # if np.sum(num_matches) >= 2:
+        #     for possible_pair in cartesian_product(matches_index, matches_index):
+        #         pair_distance = np.sqrt(
+        #             np.sum(
+        #                 (
+        #                     object_points[possible_pair[0]]
+        #                     - object_points[possible_pair[1]]
+        #                 )
+        #                 ** 2
+        #             )
+        #         )
+        #         print(pair_distance)
 
-                heading_vec = (
-                    object_points[best_match_1_i] - object_points[best_match_2_i]
-                )
-                heading_vec /= linalg.norm(heading_vec)
-                heading = np.arctan2(heading_vec[1], heading_vec[0])
+        #         # if the pair isnt the correct distance apart
+        #         if np.abs(pair_distance - dist2) > 0.025:
+        #             continue
 
-                heading = heading - np.pi if heading > np.pi / 2 else heading
-                heading = heading + np.pi if heading < -np.pi / 2 else heading
+        #         best_match_1_i = possible_pair[0]
+        #         best_match_2_i = possible_pair[1]
 
-                # determine drone index based on which side third light is on
-                drone_index = 0 if (object_points[i] - location)[1] > 0 else 1
+        #         already_matched_points.append(i)
+        #         already_matched_points.append(best_match_1_i)
+        #         already_matched_points.append(best_match_2_i)
 
-                objects.append(
-                    {
-                        "pos": location,
-                        "heading": -heading,
-                        "error": error,
-                        "droneIndex": drone_index,
-                    }
-                )
+        #         location = (
+        #             object_points[best_match_1_i] + object_points[best_match_2_i]
+        #         ) / 2
+        #         error = np.mean(
+        #             [errors[i], errors[best_match_1_i], errors[best_match_2_i]]
+        #         )
 
-                break
+        #         heading_vec = (
+        #             object_points[best_match_1_i] - object_points[best_match_2_i]
+        #         )
+        #         heading_vec /= linalg.norm(heading_vec)
+        #         heading = np.arctan2(heading_vec[1], heading_vec[0])
+
+        #         heading = heading - np.pi if heading > np.pi / 2 else heading
+        #         heading = heading + np.pi if heading < -np.pi / 2 else heading
+
+        #         # determine drone index based on which side third light is on
+        #         drone_index = 0 if (object_points[i] - location)[1] > 0 else 1
+
+        #         objects.append(
+        #             {
+        #                 "pos": location,
+        #                 "heading": -heading,
+        #                 "error": error,
+        #                 "droneIndex": drone_index,
+        #             }
+        #         )
+
+        #         break
 
     return objects
 
@@ -342,3 +368,20 @@ def cartesian_product(x, y):
         value=[255, 255, 255],
     )
     return bordered_image
+
+def make_square(img):
+    x, y, _ = img.shape
+    size = max(x, y)
+    new_img = np.zeros((size, size, 3), dtype=np.uint8)
+    ax, ay = (size - img.shape[1]) // 2, (size - img.shape[0]) // 2
+    new_img[ay : img.shape[0] + ay, ax : ax + img.shape[1]] = img
+
+    # Pad the new_img array with edge pixel values
+    # Apply feathering effect
+    feather_pixels = 8
+    for i in range(feather_pixels):
+        alpha = (i + 1) / feather_pixels
+        new_img[ay - i - 1, :] = img[0, :] * (1 - alpha)  # Top edge
+        new_img[ay + img.shape[0] + i, :] = img[-1, :] * (1 - alpha)  # Bottom edge
+
+    return new_img

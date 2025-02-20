@@ -271,7 +271,7 @@ def start_or_stop_locating_objects(data):
 def determine_scale(data):
     object_points = data["objectPoints"]
     camera_poses = data["cameraPoses"]
-    actual_distance = 0.085
+    actual_distance = 0.084
     observed_distances = []
 
     for object_points_i in object_points:
@@ -283,8 +283,10 @@ def determine_scale(data):
         observed_distances.append(
             np.sqrt(np.sum((object_points_i[0] - object_points_i[1]) ** 2))
         )
-
     scale_factor = actual_distance / np.mean(observed_distances)
+    print("Scaling")
+    print(scale_factor)
+    print("-----")
     for i in range(0, len(camera_poses)):
         camera_poses[i]["t"] = (np.array(camera_poses[i]["t"]) * scale_factor).tolist()
 

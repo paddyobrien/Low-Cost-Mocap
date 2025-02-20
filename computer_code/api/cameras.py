@@ -4,7 +4,11 @@ from settings import intrinsic_matrix, distortion_coef
 from pseyepy import Camera
 from Singleton import Singleton
 from KalmanFilter import KalmanFilter
-from helpers import find_point_correspondance_and_object_points
+from helpers import (
+    find_point_correspondance_and_object_points,
+    locate_objects,
+    make_square,
+)
 
 
 @Singleton
@@ -24,7 +28,6 @@ class Cameras:
         self.camera_poses = None
         self.projection_matrices = None
         self.to_world_coords_matrix = None
-
 
         self.kalman_filter = KalmanFilter(1)
         self.socketio = None
@@ -193,20 +196,3 @@ class Cameras:
 
     def stop_locating_objects(self):
         self.is_locating_objects = False
-
-def make_square(img):
-    x, y, _ = img.shape
-    size = max(x, y)
-    new_img = np.zeros((size, size, 3), dtype=np.uint8)
-    ax, ay = (size - img.shape[1]) // 2, (size - img.shape[0]) // 2
-    new_img[ay : img.shape[0] + ay, ax : ax + img.shape[1]] = img
-
-    # Pad the new_img array with edge pixel values
-    # Apply feathering effect
-    feather_pixels = 8
-    for i in range(feather_pixels):
-        alpha = (i + 1) / feather_pixels
-        new_img[ay - i - 1, :] = img[0, :] * (1 - alpha)  # Top edge
-        new_img[ay + img.shape[0] + i, :] = img[-1, :] * (1 - alpha)  # Bottom edge
-
-    return new_img
