@@ -8,6 +8,7 @@ from flask import Flask, Response, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
+from settings import intrinsic_matrix
 from cameras import Cameras
 from helpers import (
     camera_poses_to_serializable,
@@ -201,8 +202,8 @@ def calculate_camera_pose(data):
             return
         E = cv.sfm.essentialFromFundamental(
             F,
-            cameras.get_camera_params(0)["intrinsic_matrix"],
-            cameras.get_camera_params(1)["intrinsic_matrix"],
+            intrinsic_matrix,
+            intrinsic_matrix
         )
         possible_Rs, possible_ts = cv.sfm.motionFromEssential(E)
 
@@ -246,7 +247,7 @@ def calculate_camera_pose(data):
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
 
-    cameras.set_camera_poses(cameras_poses)
+    cameras.set_camera_poses(camera_poses)
 
     socketio.emit(
         "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}

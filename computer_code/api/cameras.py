@@ -4,6 +4,7 @@ from settings import intrinsic_matrix, distortion_coef
 from pseyepy import Camera
 from Singleton import Singleton
 from KalmanFilter import KalmanFilter
+from helpers import find_point_correspondance_and_object_points
 
 
 @Singleton
@@ -81,7 +82,7 @@ class Cameras:
                 elif self.is_triangulating_points:
                     errors, object_points, frames = (
                         find_point_correspondance_and_object_points(
-                            image_points, self.camera_poses, self.projection_matrices, frames
+                            image_points, self.camera_poses, frames
                         )
                     )
 

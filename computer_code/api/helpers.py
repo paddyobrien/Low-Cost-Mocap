@@ -79,7 +79,6 @@ def bundle_adjustment(image_points, camera_poses):
             image_points, object_points, camera_poses
         )
         errors = errors.astype(np.float32)
-
         return errors
 
     focal_distance = intrinsic_matrix[0, 0]
@@ -91,7 +90,7 @@ def bundle_adjustment(image_points, camera_poses):
         init_params = np.concatenate([init_params, camera_pose["t"].flatten()])
 
     res = optimize.least_squares(
-        residual_function, init_params, verbose=2, loss="cauchy", ftol=1e-4
+        residual_function, init_params, verbose=2, loss="cauchy", ftol=1e-9
     )
     return params_to_camera_poses(res.x)[0]
 
