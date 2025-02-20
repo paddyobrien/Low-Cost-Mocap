@@ -21,7 +21,7 @@ class Cameras:
         self.num_cameras = len(self.cameras.exposure)
         print(f"\n{self.num_cameras} cameras found")
 
-        self.is_capturing_points = False
+        self.is_capturing_points = True
         self.is_triangulating_points = False
         self.is_locating_objects = False
 
@@ -34,6 +34,13 @@ class Cameras:
 
     def end(self):
         self.cameras.end()
+
+    def state(self):
+        return {
+            "is_capturing_points": self.is_capturing_points,
+            "is_triangulating_points": self.is_triangulating_points,
+            "is_locating_objects": self.is_locating_objects,
+        }
 
     def set_socketio(self, socketio):
         self.socketio = socketio

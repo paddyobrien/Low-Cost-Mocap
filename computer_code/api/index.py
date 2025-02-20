@@ -65,6 +65,12 @@ def camera_stream():
         gen(cameras, camera), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
 
+@app.route("/api/camera_state")
+def camera_state():
+    cameras = Cameras.instance()
+
+    return cameras.state()
+
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):
@@ -310,7 +316,9 @@ def live_mocap(data):
 if __name__ == "__main__":
     try:
         socketio.run(app, port=3001, debug=True, use_reloader=False)
+        socketio.emit("started")
     finally:
         print("\nReleasing cameras")
         cameras.end()
+        socketio.emit("stopped")
         print("\nGoodbye")

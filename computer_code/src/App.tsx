@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEventHandler, useState, useRef, useEffect } from 'react';
+import { FormEventHandler, useState, useRef, useEffect, useCallback } from 'react';
 import { Badge, Button, Card, Col, Container, Row } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 import { Tooltip } from 'react-tooltip'
@@ -14,6 +14,7 @@ import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoint
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
 import PosePoints from './components/PosePoints';
 import RecordingControls from './components/RecordingControls';
+import ConnectionManager, { State } from './components/ConnectionManager';
 
 const NUM_DRONES = 2
 const ALL_CAMS = "all"
@@ -24,7 +25,7 @@ export default function App() {
   const [exposure, setExposure] = useState(100);
   const [gain, setGain] = useState(0);
 
-  const [capturingPoints, setCapturingPoints] = useState(false);
+  const [isCapturingPoints, setIsCapturingPoints] = useState(false);
   const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
   const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
   const [parsedCapturedPointsForPose, setParsedCapturedPointsForPost] = useState<Array<Array<Array<number>>>>([]);
@@ -59,6 +60,17 @@ export default function App() {
   const capturePoints = async (startOrStop: string) => {
     socket.emit("capture-points", { startOrStop })
   }
+
+  const stateUpdater = useCallback((newState: State) => {
+    setIsCapturingPoints(newState.is_capturing_points);
+    setIsTriangulatingPoints(newState.is_triangulating_points);
+    setIsLocatingObjects(newState.is_locating_objects);
+    setCameraStreamRunning(false);
+    setTimeout(async () => {
+      setCameraStreamRunning(true);
+    }, 1000)
+  }, [])
+
 
   useEffect(() => {
     const handler = (data: any) => {
@@ -186,7 +198,7 @@ export default function App() {
         size='sm'
         className='me-3'
         variant={"outline-primary"}
-        active={activeCam===i}
+        active={activeCam === i}
         onClick={() => {
           setActiveCam(i);
         }}
@@ -201,59 +213,59 @@ export default function App() {
 
   return (
     <Container fluid>
+      <ConnectionManager updateState={stateUpdater} />
       <Row >
         <Col>
           <Card className='shadow-lg'>
             <Card.Header><h2>Weccap</h2></Card.Header>
             <Card.Body>
-            <Row>
-              <Col>
-                <Button
-                  size='sm'
-                  className='me-3'
-                  variant={cameraStreamRunning ? "outline-danger" : "outline-success"}
-                  onClick={() => {
-                    setCameraStreamRunning(!cameraStreamRunning);
-                  }}
-                >
-                  {cameraStreamRunning ? "Stop" : "Start camera stream"}
-                </Button>
-                {getCameraButtons(numCams)}
-              </Col>
-              <Col style={{textAlign: "right"}}>
-              {cameraStreamRunning && <Badge style={{minWidth: 80}} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
-              {cameraStreamRunning && <RecordingControls />}
-              </Col>
-            </Row>
-            <Row className='mt-2 mb-1' style={{ height: "320px" }}>
-              <Col style={{"position": "relative", paddingLeft: 10}}>
-                <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
-                <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />
-              </Col>
-            </Row>
+              <Row>
+                <Col>
+                  <Button
+                    size='sm'
+                    className='me-3'
+                    variant={cameraStreamRunning ? "outline-danger" : "outline-success"}
+                    onClick={() => {
+                      setCameraStreamRunning(!cameraStreamRunning);
+                    }}
+                  >
+                    {cameraStreamRunning ? "Stop" : "Start camera stream"}
+                  </Button>
+                  {getCameraButtons(numCams)}
+                </Col>
+                <Col style={{ textAlign: "right" }}>
+                  {cameraStreamRunning && <Badge style={{ minWidth: 80 }} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
+                </Col>
+              </Row>
+              <Row className='mt-2 mb-1' style={{ height: "320px" }}>
+                <Col style={{ "position": "relative", paddingLeft: 10 }}>
+                  <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
+                  <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
         </Col>
       </Row>
       <Row className='pt-3'>
         <Col xs={4}>
-        <Card className='shadow-lg h-100'>
-          <Card.Header>Camera settings</Card.Header>
-          <Card.Body>
-            <Row className='pt-3'>
-              <Col xs="4">
-                <Form onChange={updateCameraSettings} className='ps-3'>
-                  <Form.Group className="mb-1">
-                    <Form.Label>Exposure: {exposure}</Form.Label>
-                    <Form.Range value={exposure} onChange={(event) => setExposure(parseFloat(event.target.value))} />
-                  </Form.Group>
-                  <Form.Group className="mb-1">
-                    <Form.Label>Gain: {gain}</Form.Label>
-                    <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
-                  </Form.Group>
-                </Form>
-              </Col>
-            </Row>
+          <Card className='shadow-lg h-100'>
+            <Card.Header>Camera settings</Card.Header>
+            <Card.Body>
+              <Row className='pt-3'>
+                <Col xs="4">
+                  <Form onChange={updateCameraSettings} className='ps-3'>
+                    <Form.Group className="mb-1">
+                      <Form.Label>Exposure: {exposure}</Form.Label>
+                      <Form.Range value={exposure} onChange={(event) => setExposure(parseFloat(event.target.value))} />
+                    </Form.Group>
+                    <Form.Group className="mb-1">
+                      <Form.Label>Gain: {gain}</Form.Label>
+                      <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
+                    </Form.Group>
+                  </Form>
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
         </Col>
@@ -261,163 +273,169 @@ export default function App() {
           <Card className='shadow-lg h-100'>
             <Card.Header>Calibration</Card.Header>
             <Card.Body>
-            <Row>
-              <Col xs="auto">
-                <h5>Start tracking points</h5>
-              </Col>
-              <Col>
-                <Tooltip id="collect-points-for-pose-button-tooltip" />
-                <a data-tooltip-hidden={cameraStreamRunning} data-tooltip-variant='error' data-tooltip-id='collect-points-for-pose-button-tooltip' data-tooltip-content="Start camera stream first">
-                  <Button
-                    size='sm'
-                    variant={capturingPoints ? "outline-danger" : "outline-primary"}
-                    disabled={!cameraStreamRunning}
-                    onClick={() => {
-                      setCapturingPoints(!capturingPoints);
-                      capturePoints(capturingPoints ? "stop" : "start");
-                    }
-                    }>
-                    {capturingPoints ? "Stop" : "Start"}
-                  </Button>
-                  
-                </a>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Camera pose calibration</h5>
-              </Col>
-            </Row>
-            <Row>
-              <Col>
-                {countOfPointsForCameraPoseCalibration} points collected for camera pose calibration
-                <Button
+              <Row>
+                <Col xs="auto">
+                  <h5>Start tracking points</h5>
+                </Col>
+                <Col>
+                  <Tooltip id="collect-points-for-pose-button-tooltip" />
+                  <a data-tooltip-hidden={cameraStreamRunning} data-tooltip-variant='error' data-tooltip-id='collect-points-for-pose-button-tooltip' data-tooltip-content="Start camera stream first">
+                    <Button
                       size='sm'
-                      variant="outline-primary"
-                      disabled={!capturingPoints}
+                      variant={isCapturingPoints ? "outline-danger" : "outline-primary"}
+                      disabled={!cameraStreamRunning}
                       onClick={() => {
-                        setCaptureNextPointForPose(true);
+                        setIsCapturingPoints(!isCapturingPoints);
+                        capturePoints(isCapturingPoints ? "stop" : "start");
                       }
                       }>
-                      Capture point
-                  </Button>
-                <Button
-                  size='sm'
-                  className="m-3"
-                  variant="outline-primary"
-                  disabled={countOfPointsForCameraPoseCalibration === 0}
-                  onClick={() => {
-                    calculateCameraPose(JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`))
-                  }}>
-                  Calculate camera pose
-                </Button>
-                <Button
-                  size='sm'
-                  variant="outline-danger"
-                  disabled={countOfPointsForCameraPoseCalibration === 0}
-                  onClick={() => {
-                    setCapturedPointsForPose("")
-                    setParsedCapturedPointsForPost([]);
-                  }}>
-                  Clear points
-                </Button>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Live Triangulation</h5>
-              </Col>
-              <Col>
-                <Button
-                  size='sm'
-                  variant={isTriangulatingPoints ? "outline-danger" : "outline-primary"}
-                  disabled={!cameraStreamRunning}
-                  onClick={() => {
-                    if (!isTriangulatingPoints) {
-                      objectPoints.current = []
-                      objectPointErrors.current = []
-                      objects.current = []
-                      filteredObjects.current = []
+                      {isCapturingPoints ? "Stop" : "Start"}
+                    </Button>
+
+                  </a>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Camera pose calibration</h5>
+                </Col>
+              </Row>
+              <Row>
+                <Col>
+                  {countOfPointsForCameraPoseCalibration} points collected for camera pose calibration
+                  <Button
+                    size='sm'
+                    variant="outline-primary"
+                    disabled={!isCapturingPoints}
+                    onClick={() => {
+                      setCaptureNextPointForPose(true);
                     }
-                    setIsTriangulatingPoints(!isTriangulatingPoints);
-                    startLiveMocap(isTriangulatingPoints ? "stop" : "start");
-                  }
-                  }>
-                  {isTriangulatingPoints ? "Stop" : "Start"}
-                </Button>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Locate Objects</h5>
-              </Col>
-              <Col>
-                <Button
-                  size='sm'
-                  variant={isLocatingObjects ? "outline-danger" : "outline-primary"}
-                  disabled={!cameraStreamRunning}
-                  onClick={() => {
-                    setIsLocatingObjects(!isLocatingObjects);
-                    socket.emit("locate-objects", { startOrStop: isLocatingObjects ? "stop" : "start" })
-                  }
-                  }>
-                  {isLocatingObjects ? "Stop" : "Start"}
-                </Button>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Set Scale Using Points</h5>
-              </Col>
-              <Col>
-                <Button
-                  size='sm'
-                  variant="outline-primary"
-                  disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                  onClick={() => {
-                    socket.emit("determine-scale", { objectPoints: objectPoints.current, cameraPoses: cameraPoses })
-                  }
-                  }>
-                  Run
-                </Button>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Acquire Floor</h5>
-              </Col>
-              <Col>
-                <Button
-                  size='sm'
-                  variant="outline-primary"
-                  disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                  onClick={() => {
-                    socket.emit("acquire-floor", { objectPoints: objectPoints.current })
-                  }
-                  }>
-                  Run
-                </Button>
-              </Col>
-            </Row>
-            <Row>
-              <Col xs="auto">
-                <h5>Set Origin</h5>
-              </Col>
-              <Col>
-                <Button
-                  size='sm'
-                  variant="outline-primary"
-                  disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                  onClick={() => {
-                    socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
-                  }
-                  }>
-                  Run
-                </Button>
-              </Col>
-            </Row>
-            
-            
+                    }>
+                    Capture point
+                  </Button>
+                  <Button
+                    size='sm'
+                    className="m-3"
+                    variant="outline-primary"
+                    disabled={countOfPointsForCameraPoseCalibration === 0}
+                    onClick={() => {
+                      calculateCameraPose(JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`))
+                    }}>
+                    Calculate camera pose
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant="outline-danger"
+                    disabled={countOfPointsForCameraPoseCalibration === 0}
+                    onClick={() => {
+                      setCapturedPointsForPose("")
+                      setParsedCapturedPointsForPost([]);
+                    }}>
+                    Clear points
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Live Triangulation</h5>
+                </Col>
+                <Col>
+                  <Button
+                    size='sm'
+                    variant={isTriangulatingPoints ? "outline-danger" : "outline-primary"}
+                    disabled={!cameraStreamRunning}
+                    onClick={() => {
+                      if (!isTriangulatingPoints) {
+                        objectPoints.current = []
+                        objectPointErrors.current = []
+                        objects.current = []
+                        filteredObjects.current = []
+                      }
+                      setIsTriangulatingPoints(!isTriangulatingPoints);
+                      startLiveMocap(isTriangulatingPoints ? "stop" : "start");
+                    }
+                    }>
+                    {isTriangulatingPoints ? "Stop" : "Start"}
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Locate Objects</h5>
+                </Col>
+                <Col>
+                  <Button
+                    size='sm'
+                    variant={isLocatingObjects ? "outline-danger" : "outline-primary"}
+                    disabled={!cameraStreamRunning}
+                    onClick={() => {
+                      setIsLocatingObjects(!isLocatingObjects);
+                      socket.emit("locate-objects", { startOrStop: isLocatingObjects ? "stop" : "start" })
+                    }
+                    }>
+                    {isLocatingObjects ? "Stop" : "Start"}
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Set Scale Using Points</h5>
+                </Col>
+                <Col>
+                  <Button
+                    size='sm'
+                    variant="outline-primary"
+                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
+                    onClick={() => {
+                      socket.emit("determine-scale", { objectPoints: objectPoints.current, cameraPoses: cameraPoses })
+                    }
+                    }>
+                    Run
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Acquire Floor</h5>
+                </Col>
+                <Col>
+                  <Button
+                    size='sm'
+                    variant="outline-primary"
+                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
+                    onClick={() => {
+                      socket.emit("acquire-floor", { objectPoints: objectPoints.current })
+                    }
+                    }>
+                    Run
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Set Origin</h5>
+                </Col>
+                <Col>
+                  <Button
+                    size='sm'
+                    variant="outline-primary"
+                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
+                    onClick={() => {
+                      socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
+                    }
+                    }>
+                    Run
+                  </Button>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs="auto">
+                  <h5>Download points</h5>
+                </Col>
+                <Col>
+                  <RecordingControls objectPoints={objectPoints} />
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
         </Col>
@@ -425,28 +443,28 @@ export default function App() {
           <Card className='shadow-lg h-100'>
             <Card.Header>Configuration</Card.Header>
             <Card.Body>
-            <Row className='pt-3'>
-              <Col xs={4} className='pt-2'>
-                Camera Poses:
-              </Col>
-              <Col>
-                <Form.Control
-                  value={JSON.stringify(cameraPoses)}
-                  onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
-                />
-              </Col>
-            </Row>
-            <Row>
-              <Col xs={4} className='pt-2'>
-                To World Matrix:
-              </Col>
-              <Col>
-                <Form.Control
-                  value={JSON.stringify(toWorldCoordsMatrix)}
-                  onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
-                />
-              </Col>
-            </Row>
+              <Row className='pt-3'>
+                <Col xs={4} className='pt-2'>
+                  Camera Poses:
+                </Col>
+                <Col>
+                  <Form.Control
+                    value={JSON.stringify(cameraPoses)}
+                    onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
+                  />
+                </Col>
+              </Row>
+              <Row>
+                <Col xs={4} className='pt-2'>
+                  To World Matrix:
+                </Col>
+                <Col>
+                  <Form.Control
+                    value={JSON.stringify(toWorldCoordsMatrix)}
+                    onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
+                  />
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
         </Col>
