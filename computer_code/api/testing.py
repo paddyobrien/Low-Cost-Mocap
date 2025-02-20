@@ -1,5 +1,5 @@
 from helpers import (
-    camera_pose_to_serializable,
+    camera_poses_to_serializable,
     calculate_reprojection_errors,
     bundle_adjustment,
     triangulate_points,
@@ -96,5 +96,5 @@ object_points = triangulate_points(image_points, camera_poses)
 error = np.mean(
     calculate_reprojection_errors(image_points, object_points, camera_poses)
 )
-print(camera_pose_to_serializable(camera_poses))
+print(camera_poses_to_serializable(camera_poses))
 print(f"Error {error}")

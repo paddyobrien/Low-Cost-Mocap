@@ -13,6 +13,7 @@ import Objects from './components/Objects';
 import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoints';
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
 import PosePoints from './components/PosePoints';
+import RecordingControls from './components/RecordingControls';
 
 const NUM_DRONES = 2
 const ALL_CAMS = "all"
@@ -221,7 +222,7 @@ export default function App() {
               </Col>
               <Col style={{textAlign: "right"}}>
               {cameraStreamRunning && <Badge style={{minWidth: 80}} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
-              
+              {cameraStreamRunning && <RecordingControls />}
               </Col>
             </Row>
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>

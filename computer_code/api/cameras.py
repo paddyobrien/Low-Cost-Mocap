@@ -1,39 +1,48 @@
+import numpy as np
+import cv2 as cv
 from settings import intrinsic_matrix, distortion_coef
 from pseyepy import Camera
 from Singleton import Singleton
+from KalmanFilter import KalmanFilter
 
 
 @Singleton
 class Cameras:
     def __init__(self):
-
+        print("\nInitializing cameras")
         self.cameras = Camera(
             fps=90, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
         )
         self.num_cameras = len(self.cameras.exposure)
-        print(f"num cams {self.num_cameras}")
+        print(f"\n{self.num_cameras} cameras found")
 
         self.is_capturing_points = False
-
         self.is_triangulating_points = False
-        self.camera_poses = None
-
         self.is_locating_objects = False
 
+        self.camera_poses = None
+        self.projection_matrices = None
         self.to_world_coords_matrix = None
 
-        self.drone_armed = []
 
-        self.kalman_filter = None
-
+        self.kalman_filter = KalmanFilter(1)
         self.socketio = None
 
-        global cameras_init
-        cameras_init = True
+    def end(self):
+        self.cameras.end()
 
     def set_socketio(self, socketio):
         self.socketio = socketio
         self.socketio.emit("num-cams", self.num_cameras)
+
+    def set_camera_poses(self, poses):
+        self.camera_poses = poses
+        p = []
+        for i, camera_pose in enumerate(self.camera_poses):
+            RT = np.c_[camera_pose["R"], camera_pose["t"]]
+            P = intrinsic_matrix @ RT
+            p.append(P)
+        self.projection_matrices = p
 
     def edit_settings(self, exposure, gain):
         self.cameras.exposure = [exposure] * self.num_cameras
@@ -72,7 +81,7 @@ class Cameras:
                 elif self.is_triangulating_points:
                     errors, object_points, frames = (
                         find_point_correspondance_and_object_points(
-                            image_points, self.camera_poses, frames
+                            image_points, self.camera_poses, self.projection_matrices, frames
                         )
                     )
 
@@ -172,7 +181,6 @@ class Cameras:
         self.is_capturing_points = True
         self.is_triangulating_points = True
         self.camera_poses = camera_poses
-        self.kalman_filter = KalmanFilter(1)
 
     def stop_trangulating_points(self):
         self.is_capturing_points = False
@@ -184,3 +192,20 @@ class Cameras:
 
     def stop_locating_objects(self):
         self.is_locating_objects = False
+
+def make_square(img):
+    x, y, _ = img.shape
+    size = max(x, y)
+    new_img = np.zeros((size, size, 3), dtype=np.uint8)
+    ax, ay = (size - img.shape[1]) // 2, (size - img.shape[0]) // 2
+    new_img[ay : img.shape[0] + ay, ax : ax + img.shape[1]] = img
+
+    # Pad the new_img array with edge pixel values
+    # Apply feathering effect
+    feather_pixels = 8
+    for i in range(feather_pixels):
+        alpha = (i + 1) / feather_pixels
+        new_img[ay - i - 1, :] = img[0, :] * (1 - alpha)  # Top edge
+        new_img[ay + img.shape[0] + i, :] = img[-1, :] * (1 - alpha)  # Bottom edge
+
+    return new_img

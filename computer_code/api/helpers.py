@@ -7,7 +7,6 @@ import json
 import os
 import time
 import numpy as np
-from KalmanFilter import KalmanFilter
 from settings import intrinsic_matrix, distortion_coef
 
 
@@ -106,12 +105,7 @@ def triangulate_point(image_points, camera_poses):
     if len(image_points) <= 1:
         return [None, None, None]
 
-    Ps = []  # projection matricies
-
-    for i, camera_pose in enumerate(camera_poses):
-        RT = np.c_[camera_pose["R"], camera_pose["t"]]
-        P = intrinsic_matrix @ RT
-        Ps.append(P)
+    Ps = camera_poses_to_projection_matrices(camera_poses)
 
     # https://temugeb.github.io/computer_vision/2021/02/06/direct-linear-transorms.html
     def DLT(Ps, image_points):
@@ -152,11 +146,7 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
     # [object_points, possible image_point groups, image_point from camera]
     correspondances = [[[i]] for i in image_points[0]]
 
-    Ps = []  # projection matricies
-    for i, camera_pose in enumerate(camera_poses):
-        RT = np.c_[camera_pose["R"], camera_pose["t"]]
-        P = intrinsic @ RT
-        Ps.append(P)
+    Ps = camera_poses_to_projection_matrices(camera_poses)
 
     root_image_points = [{"camera": 0, "point": point} for point in image_points[0]]
 
@@ -325,31 +315,19 @@ def drawlines(img1, lines):
         img1 = cv.line(img1, (x0, y0), (x1, y1), color, 1)
     return img1
 
-
-def make_square(img):
-    x, y, _ = img.shape
-    size = max(x, y)
-    new_img = np.zeros((size, size, 3), dtype=np.uint8)
-    ax, ay = (size - img.shape[1]) // 2, (size - img.shape[0]) // 2
-    new_img[ay : img.shape[0] + ay, ax : ax + img.shape[1]] = img
-
-    # Pad the new_img array with edge pixel values
-    # Apply feathering effect
-    feather_pixels = 8
-    for i in range(feather_pixels):
-        alpha = (i + 1) / feather_pixels
-        new_img[ay - i - 1, :] = img[0, :] * (1 - alpha)  # Top edge
-        new_img[ay + img.shape[0] + i, :] = img[-1, :] * (1 - alpha)  # Bottom edge
-
-    return new_img
-
-
-def camera_pose_to_serializable(camera_poses):
+def camera_poses_to_serializable(camera_poses):
     for i in range(0, len(camera_poses)):
         camera_poses[i] = {k: v.tolist() for (k, v) in camera_poses[i].items()}
 
     return camera_poses
 
+def camera_poses_to_projection_matrices(camera_poses):
+    Ps = []
+    for i, camera_pose in enumerate(camera_poses):
+        RT = np.c_[camera_pose["R"], camera_pose["t"]]
+        P = intrinsic_matrix @ RT
+        Ps.append(P)
+    return Ps
 
 def cartesian_product(x, y):
     return np.array([[x0, y0] for x0 in x for y0 in y])

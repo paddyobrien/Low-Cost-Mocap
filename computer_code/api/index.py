@@ -10,20 +10,21 @@ from flask_cors import CORS
 
 from cameras import Cameras
 from helpers import (
-    camera_pose_to_serializable,
+    camera_poses_to_serializable,
     calculate_reprojection_errors,
     bundle_adjustment,
     triangulate_points,
 )
-from KalmanFilter import KalmanFilter
-
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
-
-cameras_init = False
-
+try:
+    cameras = Cameras.instance()
+except Exception as e:
+    print(e)
+    print("Failed to initialize cameras, check connections and try again")
+    exit()
 
 @app.route("/api/camera-stream")
 def camera_stream():
@@ -245,8 +246,10 @@ def calculate_camera_pose(data):
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
 
+    cameras.set_camera_poses(cameras_poses)
+
     socketio.emit(
-        "camera-pose", {"camera_poses": camera_pose_to_serializable(camera_poses)}
+        "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
     )
     socketio.emit("success", f"Camera pose updated {error}")
 
@@ -302,4 +305,9 @@ def live_mocap(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, port=3001, debug=True)
+    try:
+        socketio.run(app, port=3001, debug=True, use_reloader=False)
+    finally:
+        print("\nReleasing cameras")
+        cameras.end()
+        print("\nGoodbye")
