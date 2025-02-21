@@ -31,10 +31,12 @@ export default function CameraSettings() {
             {...props}
             style={{
               position: 'absolute',
+              marginTop: 3,
               padding: '2px 10px',
               borderRadius: 5,
               width: 300,
               border: "1px solid #666",
+              boxShadow: "7px 10px 5px 0px rgba(0,0,0,0.15)",
               ...props.style,
             }}
           >
