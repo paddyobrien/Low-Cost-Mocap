@@ -17,41 +17,20 @@ export default function CameraSettings() {
     }
 
     return <>
-        <Button size="sm" className="me-3" ref={target} onClick={() => setOverlayVisible(!overlayVisible)}>Camera Settings</Button>
+        <Button size="sm" className="me-3" variant="outline-secondary" ref={target} onClick={() => setOverlayVisible(!overlayVisible)}>Camera Settings</Button>
         <Overlay target={target.current} show={overlayVisible} placement="bottom">
-        {({
-          placement: _placement,
-          arrowProps: _arrowProps,
-          show: _show,
-          popper: _popper,
-          hasDoneInitialMeasure: _hasDoneInitialMeasure,
-          ...props
-        }) => (
-          <div
-            {...props}
-            style={{
-              position: 'absolute',
-              marginTop: 3,
-              padding: '2px 10px',
-              borderRadius: 5,
-              width: 300,
-              border: "1px solid #666",
-              boxShadow: "7px 10px 5px 0px rgba(0,0,0,0.15)",
-              ...props.style,
-            }}
-          >
-            <Form onChange={updateCameraSettings} as={Col} className='ps-3'>
-                <Form.Group className="mb-1">
-                    <Form.Label column>Exposure: {exposure}</Form.Label>
-                    <Form.Range value={exposure} onChange={(event) => setExposure(parseFloat(event.target.value))} />
-                </Form.Group>
-                <Form.Group className="mb-1">
-                    <Form.Label>Gain: {gain}</Form.Label>
-                    <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
-                </Form.Group>
-            </Form>
-          </div>
-        )}
-      </Overlay>
+            <div className="overlay">
+                <Form onChange={updateCameraSettings} as={Col} className='ps-3'>
+                    <Form.Group className="mb-1">
+                        <Form.Label column>Exposure: {exposure}</Form.Label>
+                        <Form.Range value={exposure} onChange={(event) => setExposure(parseFloat(event.target.value))} />
+                    </Form.Group>
+                    <Form.Group className="mb-1">
+                        <Form.Label>Gain: {gain}</Form.Label>
+                        <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
+                    </Form.Group>
+                </Form>
+            </div>
+        </Overlay>
     </>
 }

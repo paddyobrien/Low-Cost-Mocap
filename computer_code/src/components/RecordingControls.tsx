@@ -22,15 +22,16 @@ function createCSV(filename: string, data: [][]) {
 
 export default function RecordingControls({ objectPoints }) {
 
-    return <>{objectPoints.current?.length > 0 && <Button
+    return <><Button
         size="sm"
         className="me-3"
         variant="outline-primary"
+        disabled={objectPoints.current.length < 1}
         onClick={() => {
             createCSV("results", objectPoints.current);
         }}
     >
-        Download points
-    </Button>}
+        Download {objectPoints.current.length} points
+    </Button>
     </>
 }
