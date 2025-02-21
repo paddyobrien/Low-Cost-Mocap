@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEventHandler, useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Badge, Button, Card, Col, Container, Row } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 import { Tooltip } from 'react-tooltip'
@@ -15,15 +15,13 @@ import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
 import PosePoints from './components/PosePoints';
 import RecordingControls from './components/RecordingControls';
 import ConnectionManager, { State } from './components/ConnectionManager';
+import CameraSettings from './components/CameraSettings';
 
 const NUM_DRONES = 2
 const ALL_CAMS = "all"
 
 export default function App() {
   const [cameraStreamRunning, setCameraStreamRunning] = useState(false);
-
-  const [exposure, setExposure] = useState(100);
-  const [gain, setGain] = useState(0);
 
   const [isCapturingPoints, setIsCapturingPoints] = useState(false);
   const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
@@ -48,14 +46,6 @@ export default function App() {
 
   const [droneSetpointWithMotion, setDroneSetpointWithMotion] = useState([0, 0, 0])
   const [trajectoryPlanningSetpoints, setTrajectoryPlanningSetpoints] = useState<number[][][]>([])
-
-  const updateCameraSettings: FormEventHandler = (e) => {
-    e.preventDefault()
-    socket.emit("update-camera-settings", {
-      exposure,
-      gain,
-    })
-  }
 
   const capturePoints = async (startOrStop: string) => {
     socket.emit("capture-points", { startOrStop })
@@ -232,6 +222,7 @@ export default function App() {
                     {cameraStreamRunning ? "Stop" : "Start camera stream"}
                   </Button>
                   {getCameraButtons(numCams)}
+                  <CameraSettings />
                 </Col>
                 <Col style={{ textAlign: "right" }}>
                   {cameraStreamRunning && <Badge style={{ minWidth: 80 }} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
@@ -248,27 +239,6 @@ export default function App() {
         </Col>
       </Row>
       <Row className='pt-3'>
-        <Col xs={4}>
-          <Card className='shadow-lg h-100'>
-            <Card.Header>Camera settings</Card.Header>
-            <Card.Body>
-              <Row className='pt-3'>
-                <Col xs="4">
-                  <Form onChange={updateCameraSettings} className='ps-3'>
-                    <Form.Group className="mb-1">
-                      <Form.Label>Exposure: {exposure}</Form.Label>
-                      <Form.Range value={exposure} onChange={(event) => setExposure(parseFloat(event.target.value))} />
-                    </Form.Group>
-                    <Form.Group className="mb-1">
-                      <Form.Label>Gain: {gain}</Form.Label>
-                      <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
-                    </Form.Group>
-                  </Form>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Col>
         <Col xs={4}>
           <Card className='shadow-lg h-100'>
             <Card.Header>Calibration</Card.Header>
