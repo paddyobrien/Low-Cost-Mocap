@@ -1,5 +1,5 @@
 import { socket } from '../shared/styles/scripts/socket';
-import { FormEventHandler, useRef, useState } from "react"
+import {FormEventHandler, useRef, useState } from "react"
 import { Button, Col, Overlay } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 

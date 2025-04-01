@@ -33,8 +33,10 @@ export default function App() {
   const [isLocatingObjects, setIsLocatingObjects] = useState(false);
 
   const objectPoints = useRef<Array<Array<Array<number>>>>([])
+  const objectPointTimes = useRef<Array<Array<Array<number>>>>([])
   const filteredObjects = useRef<object[][]>([])
   const objectPointErrors = useRef<Array<Array<number>>>([])
+  const imagePoints = useRef<Array<Array<number>>>([])
   const objects = useRef<Array<Array<Object>>>([])
   const [objectPointCount, setObjectPointCount] = useState(0);
 
@@ -95,10 +97,12 @@ export default function App() {
   useEffect(() => {
     socket.on("object-points", (data) => {
       objectPoints.current.push(data["object_points"])
+      objectPointTimes.current.push(data["time_ms"])
       if (data["filtered_objects"].length != 0) {
         filteredObjects.current.push(data["filtered_objects"])
       }
       objectPointErrors.current.push(data["errors"])
+      imagePoints.current.push(data["image_points"])
       objects.current.push(data["objects"])
       setObjectPointCount(objectPointCount + 1)
     })
@@ -223,6 +227,8 @@ export default function App() {
                     onClick={() => {
                       if (!isTriangulatingPoints) {
                         objectPoints.current = []
+                        objectPointTimes.current = [];
+                        imagePoints.current = []
                         objectPointErrors.current = []
                         objects.current = []
                         filteredObjects.current = []
@@ -268,7 +274,7 @@ export default function App() {
                     }>
                     Set origin
                   </Button>
-                  <RecordingControls objectPoints={objectPoints} />
+                  <RecordingControls objectPoints={objectPoints} objectPointTimes={objectPointTimes} />
                 </Col>
               </Row>
             </Card.Body>

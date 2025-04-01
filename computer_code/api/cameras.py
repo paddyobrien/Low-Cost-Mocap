@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import cv2 as cv
 from settings import intrinsic_matrix, distortion_coef
@@ -128,10 +129,14 @@ class Cameras:
                             filtered_object["vel"] = filtered_object["vel"].tolist()
                             filtered_object["pos"] = filtered_object["pos"].tolist()
 
+                    now_ns = time.time_ns() # Time in nanoseconds
+                    now_ms = int(now_ns / 1000000)
                     self.socketio.emit(
                         "object-points",
                         {
                             "object_points": object_points.tolist(),
+                            "time_ms": now_ms, 
+                            "image_points": image_points,
                             "errors": errors.tolist(),
                             "objects": [
                                 {
