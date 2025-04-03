@@ -1,4 +1,5 @@
 import copy
+from sklearn.linear_model import RANSACRegressor
 import time
 import cv2 as cv
 import numpy as np
@@ -75,66 +76,116 @@ def camera_state():
 @socketio.on("acquire-floor")
 def acquire_floor(data):
     cameras = Cameras.instance()
-    object_points = data["objectPoints"]
-    object_points = np.array([item for sublist in object_points for item in sublist])
+    object_points = np.array([item for sublist in data["objectPoints"] for item in sublist])
+    
+    # 1. Fit floor plane (SVD)
+    centroid = np.mean(object_points, axis=0)
+    points_centered = object_points - centroid
+    U, s, Vh = np.linalg.svd(points_centered)
+    a, b, c = Vh[2, :]  # Raw floor normal ([0.0076, -0.0565, 0.9983])
+    current_normal = np.array([a, b, c])
+    if current_normal[2] < 0:
+        current_normal *= -1  # Ensure Z points up
 
-    tmp_A = []
-    tmp_b = []
-    for i in range(len(object_points)):
-        tmp_A.append([object_points[i, 0], object_points[i, 1], 1])
-        tmp_b.append(object_points[i, 2])
-    b = np.matrix(tmp_b).T
-    A = np.matrix(tmp_A)
+    # 2. Target normal: Z-up ([0,0,1])
+    target_normal = np.array([0, 0, 1])
 
-    fit, residual, rnk, s = linalg.lstsq(A, b)
-    fit = fit.T[0]
+    # 3. Compute rotation (Rodrigues)
+    v = np.cross(current_normal, target_normal)
+    c_theta = np.dot(current_normal, target_normal)
+    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    rotation = np.eye(3) + kmat + kmat @ kmat * (1 / (1 + c_theta))
 
-    plane_normal = np.array([[fit[0]], [fit[1]], [-1]])
-    plane_normal = plane_normal / linalg.norm(plane_normal)
-    up_normal = np.array([[0], [1], [0]], dtype=np.float32)
+    # 4. Apply rotation to existing matrix
+    existing_matrix = np.array(data["toWorldCoordsMatrix"])
+    new_matrix = existing_matrix.copy()
+    new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
 
-    plane = np.array([fit[0], fit[1], -1, fit[2]])
+    # 5. Check alignment: Compute error before/after
+    old_error = np.abs(np.dot(existing_matrix[:3, 2], current_normal) - 1)  # Current misalignment
+    transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
+    new_error = np.max(np.abs(transformed_points[2, :]))  # New floor error
 
-    # https://math.stackexchange.com/a/897677/1012327
-    G = np.array(
-        [
-            [
-                np.dot(plane_normal.T, up_normal)[0][0],
-                -linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
-                0,
-            ],
-            [
-                linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
-                np.dot(plane_normal.T, up_normal)[0][0],
-                0,
-            ],
-            [0, 0, 1],
-        ]
-    )
-    F = np.array(
-        [
-            plane_normal.T[0],
-            (
-                (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
-                / linalg.norm(
-                    (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
-                )
-            ).T[0],
-            np.cross(up_normal.T[0], plane_normal.T[0]),
-        ]
-    ).T
-    R = F @ G @ linalg.inv(F)
+    # 6. Reverse rotation if error increases
+    if new_error > old_error:
+        rotation = np.eye(3) - kmat + kmat @ kmat * (1 / (1 - c_theta))  # Reverse direction
+        new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
+        transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
+        new_error = np.max(np.abs(transformed_points[2, :]))
 
-    R = R @ [[1, 0, 0], [0, -1, 0], [0, 0, 1]]  # i dont fucking know why
+    # 7. Force floor to z=0
+    new_matrix[2, 3] = -np.dot(target_normal, centroid)
 
-    cameras.to_world_coords_matrix = np.array(
-        np.vstack((np.c_[R, [0, 0, 0]], [[0, 0, 0, 1]]))
-    )
-
+    # 8. Update system
+    cameras.to_world_coords_matrix = new_matrix
     socketio.emit(
         "to-world-coords-matrix",
-        {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
+        {"to_world_coords_matrix": new_matrix.tolist()},
     )
+    print(f"Alignment error: {new_error:.6f} (should be close to 0)")
+# @socketio.on("acquire-floor")
+# def acquire_floor(data):
+#     cameras = Cameras.instance()
+#     object_points = data["objectPoints"]
+#     object_points = np.array([item for sublist in object_points for item in sublist])
+
+#     tmp_A = []
+#     tmp_b = []
+#     for i in range(len(object_points)):
+#         tmp_A.append([object_points[i, 0], object_points[i, 1], 1])
+#         tmp_b.append(object_points[i, 2])
+#     b = np.matrix(tmp_b).T
+#     A = np.matrix(tmp_A)
+
+#     fit, residual, rnk, s = linalg.lstsq(A, b)
+#     fit = fit.T[0]
+
+#     plane_normal = np.array([[fit[0]], [fit[1]], [-1]])
+#     plane_normal = plane_normal / linalg.norm(plane_normal)
+#     up_normal = np.array([[0], [1], [0]], dtype=np.float32)
+
+#     plane = np.array([fit[0], fit[1], -1, fit[2]])
+
+#     # https://math.stackexchange.com/a/897677/1012327
+#     G = np.array(
+#         [
+#             [
+#                 np.dot(plane_normal.T, up_normal)[0][0],
+#                 -linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
+#                 0,
+#             ],
+#             [
+#                 linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
+#                 np.dot(plane_normal.T, up_normal)[0][0],
+#                 0,
+#             ],
+#             [0, 0, 1],
+#         ]
+#     )
+#     F = np.array(
+#         [
+#             plane_normal.T[0],
+#             (
+#                 (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
+#                 / linalg.norm(
+#                     (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
+#                 )
+#             ).T[0],
+#             np.cross(up_normal.T[0], plane_normal.T[0]),
+#         ]
+#     ).T
+#     R = F @ G @ linalg.inv(F)
+
+#     R = R @ [[1, 0, 0], [0, -1, 0], [0, 0, 1]]  # i dont fucking know why
+
+#     cameras.to_world_coords_matrix = np.array(
+#         np.vstack((np.c_[R, [0, 0, 0]], [[0, 0, 0, 1]]))
+#     )
+
+#     socketio.emit(
+#         "to-world-coords-matrix",
+#         {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
+#     )
 
 
 @socketio.on("set-origin")

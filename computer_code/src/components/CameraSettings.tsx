@@ -1,9 +1,10 @@
 import { socket } from '../shared/styles/scripts/socket';
-import {FormEventHandler, useRef, useState } from "react"
+import {FormEventHandler, useEffect, useRef, useState } from "react"
 import { Button, Col, Overlay } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 
 export default function CameraSettings() {
+    const overlay = useRef();
     const [overlayVisible, setOverlayVisible] = useState(false);
     const [exposure, setExposure] = useState(100);
     const [gain, setGain] = useState(0);
@@ -18,7 +19,7 @@ export default function CameraSettings() {
 
     return <>
         <Button size="sm" className="me-3" variant="outline-secondary" ref={target} onClick={() => setOverlayVisible(!overlayVisible)}>Camera Settings</Button>
-        <Overlay target={target.current} show={overlayVisible} placement="bottom">
+        <Overlay target={target.current} show={overlayVisible} rootClose={true} onHide={() => setOverlayVisible(false)} placement="bottom">
             <div className="overlay">
                 <Form onChange={updateCameraSettings} as={Col} className='ps-3'>
                     <Form.Group className="mb-1">

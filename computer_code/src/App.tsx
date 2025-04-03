@@ -278,15 +278,17 @@ export default function App() {
                     variant="outline-primary"
                     disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
                     onClick={() => {
-                      socket.emit("acquire-floor", { objectPoints: objectPoints.current })
+                      socket.emit("acquire-floor", { objectPoints: objectPoints.current, cameraPoses, toWorldCoordsMatrix })
                     }
                     }>
                     Acquire Floor
                   </Button>
+                  <div className="mt-2">
                   <DownloadControls type="csv" label="object points" objectPoints={objectPoints} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="csv" label="object errors" objectPoints={objectPointErrors} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="jsonl" label="image points" objectPoints={imagePoints} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="jsonl" label="object track points" objectPoints={filteredObjects} objectPointTimes={objectPointTimes} />
+                  </div>
                 </Col>
               </Row>
             </Card.Body>
