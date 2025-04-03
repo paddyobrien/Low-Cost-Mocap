@@ -45,7 +45,7 @@ export default function ConnectionManager({updateState}:{updateState: (json: Sta
         }
     }, [])
 
-    if (true || isConnected) {
+    if (isConnected) {
         return <></>
     }
 

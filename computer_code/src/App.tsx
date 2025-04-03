@@ -10,15 +10,13 @@ import { OrbitControls } from '@react-three/drei'
 import Points from './components/Points';
 import { socket } from './shared/styles/scripts/socket';
 import Objects from './components/Objects';
-import TrajectoryPlanningSetpoints from './components/TrajectoryPlanningSetpoints';
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
 import PosePoints from './components/PosePoints';
-import RecordingControls from './components/RecordingControls';
+import DownloadControls from './components/DownloadControls';
 import ConnectionManager, { State } from './components/ConnectionManager';
 import CameraSettings from './components/CameraSettings';
 import CameraPoseCalibration from './components/CameraPoseCalibration';
 
-const NUM_DRONES = 2
 const ALL_CAMS = "all"
 
 export default function App() {
@@ -79,7 +77,8 @@ export default function App() {
 
 
     return () => {
-      socket.off("num-cams")
+      socket.off("error")
+      socket.off("success")
     }
   }, [numCams])
 
@@ -188,7 +187,7 @@ export default function App() {
                   </Button>
                   {getCameraButtons(numCams)}
                   <CameraSettings />
-                  <CameraPoseCalibration setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
+                  <CameraPoseCalibration cameraPoses={cameraPoses} setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
                 </Col>
                 <Col style={{ textAlign: "right" }}>
                   {cameraStreamRunning && <Badge style={{ minWidth: 80 }} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
@@ -274,7 +273,20 @@ export default function App() {
                     }>
                     Set origin
                   </Button>
-                  <RecordingControls objectPoints={objectPoints} objectPointTimes={objectPointTimes} />
+                  <Button
+                    size='sm'
+                    variant="outline-primary"
+                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
+                    onClick={() => {
+                      socket.emit("acquire-floor", { objectPoints: objectPoints.current })
+                    }
+                    }>
+                    Acquire Floor
+                  </Button>
+                  <DownloadControls type="csv" label="object points" objectPoints={objectPoints} objectPointTimes={objectPointTimes} />
+                  <DownloadControls type="csv" label="object errors" objectPoints={objectPointErrors} objectPointTimes={objectPointTimes} />
+                  <DownloadControls type="jsonl" label="image points" objectPoints={imagePoints} objectPointTimes={objectPointTimes} />
+                  <DownloadControls type="jsonl" label="object track points" objectPoints={filteredObjects} objectPointTimes={objectPointTimes} />
                 </Col>
               </Row>
             </Card.Body>

@@ -84,10 +84,10 @@ def bundle_adjustment(image_points, camera_poses):
         rot_vec = Rotation.as_rotvec(Rotation.from_matrix(camera_pose["R"])).flatten()
         init_params = np.concatenate([init_params, [focal_distance]])
         init_params = np.concatenate([init_params, rot_vec])
-        init_params = np.concatenate([init_params, camera_pose["t"].flatten()])
+        init_params = np.concatenate([init_params, np.array(camera_pose["t"]).flatten()])
 
     res = optimize.least_squares(
-        residual_function, init_params, verbose=2, loss="cauchy", ftol=1e-9
+        residual_function, init_params, verbose=2, loss="linear", ftol=1e-9
     )
     return params_to_camera_poses(res.x)[0]
 
@@ -226,7 +226,7 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
 
 
 def locate_objects(object_points, errors):
-    dist = 0.089
+    dist = 0.131
     dist1 = 0.089
     dist2 = 0.133
 

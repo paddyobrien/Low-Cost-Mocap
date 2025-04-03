@@ -12,7 +12,7 @@ const isValidJson = (str: string) => {
     return false;
 }
 
-export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }: { setParsedCapturedPointsForPose: (newPoints: unknown) => void }) {
+export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPointsForPose }: { cameraPoses: any, setParsedCapturedPointsForPose: (newPoints: unknown) => void }) {
     const target = useRef(null);
     const [overlayVisible, setOverlayVisible] = useState(false);
     const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
@@ -36,6 +36,10 @@ export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }
         socket.emit("calculate-camera-pose", { cameraPoints })
     }
 
+    const calculateBundleAdjustment = async (cameraPoints: Array<Array<Array<number>>>) => {
+        socket.emit("calculate-bundle-adjustment", { cameraPoints, cameraPoses })
+    }
+
     const countOfPointsForCameraPoseCalibration = isValidJson(`[${capturedPointsForPose.slice(0, -1)}]`) ? JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`).length : 0;
     return <>
         <Button
@@ -46,7 +50,7 @@ export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }
             onClick={() => setOverlayVisible(!overlayVisible)}
         >Pose Calibration</Button>
         <Overlay target={target.current} show={overlayVisible} placement="top" rootClose={true} onHide={() => setOverlayVisible(false)}>
-            <div className="overlay" style={{width: 400}}>
+            <div className="overlay" style={{width: 600}}>
                 <div>{countOfPointsForCameraPoseCalibration} points collected</div>
                 <Button
                     size='sm'
@@ -56,7 +60,7 @@ export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }
                         setCaptureNextPointForPose(true);
                     }
                     }>
-                    Capture point
+                    Capture
                 </Button>
                 <Button
                     size='sm'
@@ -66,7 +70,17 @@ export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }
                     onClick={() => {
                         calculateCameraPose(JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`))
                     }}>
-                    Calculate camera pose
+                    Full camera pose
+                </Button>
+                <Button
+                    size='sm'
+                    className=""
+                    variant="outline-primary"
+                    disabled={countOfPointsForCameraPoseCalibration === 0}
+                    onClick={() => {
+                        calculateBundleAdjustment(JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`))
+                    }}>
+                    Bundle Adjustment
                 </Button>
                 <Button
                     size='sm'
@@ -76,7 +90,7 @@ export default function CameraPoseCalibration({ setParsedCapturedPointsForPose }
                         setCapturedPointsForPose("")
                         setParsedCapturedPointsForPose([]);
                     }}>
-                    Clear points
+                    Clear
                 </Button>
             </div>
         </Overlay>

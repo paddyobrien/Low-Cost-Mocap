@@ -91,7 +91,7 @@ def acquire_floor(data):
 
     plane_normal = np.array([[fit[0]], [fit[1]], [-1]])
     plane_normal = plane_normal / linalg.norm(plane_normal)
-    up_normal = np.array([[0], [0], [1]], dtype=np.float32)
+    up_normal = np.array([[0], [1], [0]], dtype=np.float32)
 
     plane = np.array([fit[0], fit[1], -1, fit[2]])
 
@@ -177,6 +177,29 @@ def capture_points(data):
     elif start_or_stop == "stop":
         cameras.stop_capturing_points()
 
+@socketio.on("calculate-bundle-adjustment")
+def calculate_bundle_adjustment(data):
+    cameras = Cameras.instance()
+    image_points = np.array(data["cameraPoints"])
+    camera_poses = data["cameraPoses"]
+    for i in range(0, cameras.num_cameras - 1):
+        p = camera_poses[i]['t']
+        print(p)
+        camera_poses[i]['t'] = np.array([p[0], p[1], p[2]])
+    print(camera_poses)
+    camera_poses = bundle_adjustment(image_points, camera_poses)
+
+    object_points = triangulate_points(image_points, camera_poses)
+    error = np.mean(
+        calculate_reprojection_errors(image_points, object_points, camera_poses)
+    )
+
+    cameras.set_camera_poses(camera_poses)
+
+    socketio.emit(
+        "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
+    )
+    socketio.emit("success", f"Camera pose updated {error}")
 
 @socketio.on("calculate-camera-pose")
 def calculate_camera_pose(data):
@@ -277,7 +300,7 @@ def start_or_stop_locating_objects(data):
 def determine_scale(data):
     object_points = data["objectPoints"]
     camera_poses = data["cameraPoses"]
-    actual_distance = 0.084
+    actual_distance = 0.131
     observed_distances = []
 
     for object_points_i in object_points:
