@@ -21,7 +21,7 @@ const ALL_CAMS = "all"
 
 export default function App() {
   const [cameraStreamRunning, setCameraStreamRunning] = useState(false);
-
+  const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [isCapturingPoints, setIsCapturingPoints] = useState(false);
   const [parsedCapturedPointsForPose, setParsedCapturedPointsForPose] = useState<Array<Array<Array<number>>>>([]);
   const [numCams, setNumCams] = useState(0);
@@ -48,6 +48,7 @@ export default function App() {
   }
 
   const stateUpdater = useCallback((newState: State) => {
+    setIsProcessingImages(newState.is_processing_images);
     setIsCapturingPoints(newState.is_capturing_points);
     setIsTriangulatingPoints(newState.is_triangulating_points);
     setIsLocatingObjects(newState.is_locating_objects);
@@ -135,6 +136,10 @@ export default function App() {
     socket.emit("triangulate-points", { startOrStop, cameraPoses, toWorldCoordsMatrix })
   }
 
+  const captureImage = () => {
+    socket.emit("capture_image")
+  }
+
   const getCameraButtons = (numCams: number) => {
     let content = [];
     content.push(<Button
@@ -186,8 +191,16 @@ export default function App() {
                     {cameraStreamRunning ? "Stop" : "Start camera stream"}
                   </Button>
                   {getCameraButtons(numCams)}
-                  <CameraSettings />
+                  <CameraSettings isProcessingImages={isProcessingImages} setIsProcessingImages={setIsProcessingImages} />
                   <CameraPoseCalibration cameraPoses={cameraPoses} setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
+                  <Button
+                    size="sm"
+                    className="me-3"
+                    variant="outline-secondary"
+                    onClick={captureImage}
+                  >
+                    Capture frame
+                  </Button>
                 </Col>
                 <Col style={{ textAlign: "right" }}>
                   {cameraStreamRunning && <Badge style={{ minWidth: 80 }} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}

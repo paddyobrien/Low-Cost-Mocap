@@ -1,4 +1,6 @@
+import os
 import time
+import uuid
 import numpy as np
 import cv2 as cv
 from settings import intrinsic_matrix, distortion_coef
@@ -22,6 +24,8 @@ class Cameras:
         self.num_cameras = len(self.cameras.exposure)
         print(f"\n{self.num_cameras} cameras found")
 
+        self.is_processing_images = True
+        self.capture_next_image = False
         self.is_capturing_points = True
         self.is_triangulating_points = False
         self.is_locating_objects = False
@@ -41,6 +45,7 @@ class Cameras:
             "is_capturing_points": self.is_capturing_points,
             "is_triangulating_points": self.is_triangulating_points,
             "is_locating_objects": self.is_locating_objects,
+            "is_processing_images": self.is_processing_images
         }
 
     def set_socketio(self, socketio):
@@ -63,23 +68,29 @@ class Cameras:
     def _camera_read(self):
         frames, _ = self.cameras.read(squeeze=False)
 
-        for i in range(0, self.num_cameras):
-            frames[i] = np.rot90(frames[i], k=0)
-            frames[i] = make_square(frames[i])
-            frames[i] = cv.undistort(frames[i], intrinsic_matrix, distortion_coef)
-            # frames[i] = cv.medianBlur(frames[i],9)
-            # frames[i] = cv.GaussianBlur(frames[i],(9,9),0)
-            kernel = np.array(
-                [
-                    [-2, -1, -1, -1, -2],
-                    [-1, 1, 3, 1, -1],
-                    [-1, 3, 4, 3, -1],
-                    [-1, 1, 3, 1, -1],
-                    [-2, -1, -1, -1, -2],
-                ]
-            )
-            frames[i] = cv.filter2D(frames[i], -1, kernel)
-            frames[i] = cv.cvtColor(frames[i], cv.COLOR_RGB2BGR)
+        if self.is_processing_images:
+            for i in range(0, self.num_cameras):
+                frames[i] = np.rot90(frames[i], k=0)
+                frames[i] = make_square(frames[i])
+                frames[i] = cv.undistort(frames[i], intrinsic_matrix, distortion_coef)
+                # frames[i] = cv.medianBlur(frames[i],9)
+                # frames[i] = cv.GaussianBlur(frames[i],(9,9),0)
+                kernel = np.array(
+                    [
+                        [-2, -1, -1, -1, -2],
+                        [-1, 1, 3, 1, -1],
+                        [-1, 3, 4, 3, -1],
+                        [-1, 1, 3, 1, -1],
+                        [-2, -1, -1, -1, -2],
+                    ]
+                )
+                frames[i] = cv.filter2D(frames[i], -1, kernel)
+                frames[i] = cv.cvtColor(frames[i], cv.COLOR_RGB2BGR)
+        if self.capture_next_image:
+            self.capture_next_image = False
+            for i in range(0, self.num_cameras):
+                print(f"Storing image to {os.getcwd()}")
+                cv.imwrite(f"./images/camera_{i}_{uuid.uuid4()}.jpg", frames[i])
 
         if self.is_capturing_points:
             image_points = []

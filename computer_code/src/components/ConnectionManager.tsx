@@ -18,6 +18,7 @@ async function getState() {
   }
 
 export interface State {
+    is_processing_images:boolean,
     is_capturing_points: boolean,
     is_triangulating_points: boolean,
     is_locating_objects: boolean,
@@ -38,6 +39,7 @@ export default function ConnectionManager({updateState}:{updateState: (json: Sta
         socket.on("connect", async () => {
             setIsConnected(true);
             const json = await getState();
+            console.log(json)
             updateState(json as State);
         });
         return () => {

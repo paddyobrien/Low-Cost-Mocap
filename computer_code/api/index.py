@@ -55,7 +55,7 @@ def camera_stream():
                 time.sleep(last_run_time - time_now + loop_interval)
             last_run_time = time.time()
             frames = cameras.get_frames(camera)
-            jpeg_frame = cv.imencode(".jpg", frames)[1].tostring()
+            jpeg_frame = cv.imencode(".jpg", frames)[1].tobytes()
 
             yield (
                 b"--frame\r\n"
@@ -346,6 +346,21 @@ def start_or_stop_locating_objects(data):
     elif start_or_stop == "stop":
         cameras.stop_locating_objects()
 
+@socketio.on("image-processing")
+def start_or_stop_image_processing(data):
+    cameras = Cameras.instance()
+    start_or_stop = data["startOrStop"]
+
+    if start_or_stop == "start":
+        cameras.is_processing_images = True
+        return
+    elif start_or_stop == "stop":
+        cameras.is_processing_images = False
+
+@socketio.on("capture_image")
+def capture_image():
+    cameras = Cameras.instance()
+    cameras.capture_next_image = True
 
 @socketio.on("determine-scale")
 def determine_scale(data):
