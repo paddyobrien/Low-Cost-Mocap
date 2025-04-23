@@ -49,6 +49,8 @@ def calculate_reprojection_error(image_points, object_point, camera_poses):
 
 
 # https://www.cs.jhu.edu/~misha/ReadingSeminar/Papers/Triggs00.pdf
+# original bundle adjustment, specifies focal length as an adjustment
+# which seems like a mistake since its not used in the residual function
 def bundle_adjustment(image_points, camera_poses):
 
     def params_to_camera_poses(params):
@@ -91,6 +93,39 @@ def bundle_adjustment(image_points, camera_poses):
         residual_function, init_params, verbose=2, loss="linear", ftol=1e-9
     )
     return params_to_camera_poses(res.x)[0]
+
+# a much dumber bundle adjustment that just does rotation adjustments
+# hope is that this improves accuracy by assuming distances can be pretty well
+# calibrated manually
+def bundle_adjustment2(image_points, camera_poses):
+
+    def params_to_camera_poses(params):
+        for i, _ in enumerate(camera_poses):
+            start = i * 3
+            end = i * 3 + 3
+            camera_poses[i]["R"] = Rotation.as_matrix(
+                Rotation.from_rotvec(params[start:end])
+            )
+
+        return camera_poses
+
+    def residual_function(params):
+        camera_poses = params_to_camera_poses(params)
+        object_points = triangulate_points(image_points, camera_poses)
+        errors = calculate_reprojection_errors(
+            image_points, object_points, camera_poses
+        )
+        errors = errors.astype(np.float32)
+        return errors
+
+    init_params = []
+    for i, camera_pose in enumerate(camera_poses):
+        rot_vec = Rotation.as_rotvec(Rotation.from_matrix(camera_pose["R"])).flatten()
+        init_params = np.concatenate([init_params, rot_vec])
+    res = optimize.least_squares(
+        residual_function, init_params, verbose=2, loss="linear", ftol=1e-9
+    )
+    return params_to_camera_poses(res.x)
 
 
 def triangulate_point(image_points, camera_poses):
@@ -346,6 +381,8 @@ def camera_poses_to_serializable(camera_poses):
 
     return camera_poses
 
+# Opportunity for performance improvements here. This doesn't change
+# for a given capture but is recalculated fairly deep down the run loop
 def camera_poses_to_projection_matrices(camera_poses):
     Ps = []
     for i, camera_pose in enumerate(camera_poses):
@@ -356,18 +393,6 @@ def camera_poses_to_projection_matrices(camera_poses):
 
 def cartesian_product(x, y):
     return np.array([[x0, y0] for x0 in x for y0 in y])
-
-    height, width = image.shape[:2]
-    bordered_image = cv.copyMakeBorder(
-        image,
-        border_size,
-        border_size,
-        border_size,
-        border_size,
-        cv.BORDER_CONSTANT,
-        value=[255, 255, 255],
-    )
-    return bordered_image
 
 def make_square(img):
     x, y, _ = img.shape

@@ -15,6 +15,7 @@ from helpers import (
     camera_poses_to_serializable,
     calculate_reprojection_errors,
     bundle_adjustment,
+    bundle_adjustment2,
     triangulate_points,
 )
 
@@ -238,7 +239,7 @@ def calculate_bundle_adjustment(data):
         print(p)
         camera_poses[i]['t'] = np.array([p[0], p[1], p[2]])
     print(camera_poses)
-    camera_poses = bundle_adjustment(image_points, camera_poses)
+    camera_poses = bundle_adjustment2(image_points, camera_poses)
 
     object_points = triangulate_points(image_points, camera_poses)
     error = np.mean(
