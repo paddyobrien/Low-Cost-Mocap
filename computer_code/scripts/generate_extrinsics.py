@@ -9,6 +9,8 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
+# Generate an extrinsic matrix based on the geometry of the motion capture
+# assumes a square arrangement on a single plane
 
 side = 0.3
 depth = 0.2
