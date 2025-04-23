@@ -9,7 +9,7 @@ from flask import Flask, Response, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
-from settings import intrinsic_matrix
+from settings import intrinsic_matrices
 from cameras import Cameras
 from helpers import (
     camera_poses_to_serializable,
@@ -244,7 +244,7 @@ def calculate_bundle_adjustment(data):
     error = np.mean(
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
-
+    print(f"New pose computed, average reprojection error: {error}")
     cameras.set_camera_poses(camera_poses)
 
     socketio.emit(
@@ -282,8 +282,8 @@ def calculate_camera_pose(data):
             return
         E = cv.sfm.essentialFromFundamental(
             F,
-            intrinsic_matrix,
-            intrinsic_matrix
+            intrinsic_matrices[camera_i],
+            intrinsic_matrices[camera_i+1]
         )
         possible_Rs, possible_ts = cv.sfm.motionFromEssential(E)
 
@@ -326,7 +326,7 @@ def calculate_camera_pose(data):
     error = np.mean(
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
-
+    print(f"New pose computed, average reprojection error: {error}")
     cameras.set_camera_poses(camera_poses)
 
     socketio.emit(

@@ -1,10 +1,10 @@
 import numpy as np
-from scipy import linalg, optimize, signal
+from scipy import linalg, optimize
 import cv2 as cv
 from scipy.spatial.transform import Rotation
 import copy
 import numpy as np
-from settings import intrinsic_matrix, distortion_coef
+from settings import intrinsic_matrices
 
 
 def calculate_reprojection_errors(image_points, object_points, camera_poses):
@@ -37,7 +37,7 @@ def calculate_reprojection_error(image_points, object_point, camera_poses):
             np.expand_dims(object_point, axis=0).astype(np.float32),
             np.array(camera_pose["R"], dtype=np.float64),
             np.array(camera_pose["t"], dtype=np.float64),
-            intrinsic_matrix,
+            intrinsic_matrices[i],
             np.array([]),
         )
         projected_img_point = projected_img_points[:, 0, :][0]
@@ -78,10 +78,11 @@ def bundle_adjustment(image_points, camera_poses):
         errors = errors.astype(np.float32)
         return errors
 
-    focal_distance = intrinsic_matrix[0, 0]
+    focal_distance = intrinsic_matrices[0][0, 0]
     init_params = np.array([focal_distance])
     for i, camera_pose in enumerate(camera_poses[1:]):
         rot_vec = Rotation.as_rotvec(Rotation.from_matrix(camera_pose["R"])).flatten()
+        focal_distance = intrinsic_matrices[i][0,0]
         init_params = np.concatenate([init_params, [focal_distance]])
         init_params = np.concatenate([init_params, rot_vec])
         init_params = np.concatenate([init_params, np.array(camera_pose["t"]).flatten()])
@@ -103,21 +104,6 @@ def triangulate_point(image_points, camera_poses):
 
     Ps = camera_poses_to_projection_matrices(camera_poses)
 
-    # https://temugeb.github.io/computer_vision/2021/02/06/direct-linear-transorms.html
-    def DLT(Ps, image_points):
-        A = []
-
-        for P, image_point in zip(Ps, image_points):
-            A.append(image_point[1] * P[2, :] - P[1, :])
-            A.append(P[0, :] - image_point[0] * P[2, :])
-
-        A = np.array(A).reshape((len(Ps) * 2, 4))
-        B = A.transpose() @ A
-        U, s, Vh = linalg.svd(B, full_matrices=False)
-        object_point = Vh[3, 0:3] / Vh[3, 3]
-
-        return object_point
-
     object_point = DLT(Ps, image_points)
 
     return object_point
@@ -131,6 +117,20 @@ def triangulate_points(image_points, camera_poses):
 
     return np.array(object_points)
 
+# https://temugeb.github.io/computer_vision/2021/02/06/direct-linear-transorms.html
+def DLT(Ps, image_points):
+    A = []
+
+    for P, image_point in zip(Ps, image_points):
+        A.append(image_point[1] * P[2, :] - P[1, :])
+        A.append(P[0, :] - image_point[0] * P[2, :])
+
+    A = np.array(A).reshape((len(Ps) * 2, 4))
+    B = A.transpose() @ A
+    U, s, Vh = linalg.svd(B, full_matrices=False)
+    object_point = Vh[3, 0:3] / Vh[3, 3]
+
+    return object_point
 
 def find_point_correspondance_and_object_points(image_points, camera_poses, frames):
     for image_points_i in image_points:
@@ -350,7 +350,7 @@ def camera_poses_to_projection_matrices(camera_poses):
     Ps = []
     for i, camera_pose in enumerate(camera_poses):
         RT = np.c_[camera_pose["R"], camera_pose["t"]]
-        P = intrinsic_matrix @ RT
+        P = intrinsic_matrices[i] @ RT
         Ps.append(P)
     return Ps
 

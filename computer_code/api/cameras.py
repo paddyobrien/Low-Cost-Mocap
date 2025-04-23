@@ -3,7 +3,7 @@ import time
 import uuid
 import numpy as np
 import cv2 as cv
-from settings import intrinsic_matrix, distortion_coef
+from settings import intrinsic_matrices, distortion_coefs
 from pseyepy import Camera
 from Singleton import Singleton
 from KalmanFilter import KalmanFilter
@@ -57,7 +57,7 @@ class Cameras:
         p = []
         for i, camera_pose in enumerate(self.camera_poses):
             RT = np.c_[camera_pose["R"], camera_pose["t"]]
-            P = intrinsic_matrix @ RT
+            P = intrinsic_matrices[i] @ RT
             p.append(P)
         self.projection_matrices = p
 
@@ -72,15 +72,15 @@ class Cameras:
             for i in range(0, self.num_cameras):
                 frames[i] = np.rot90(frames[i], k=0)
                 frames[i] = make_square(frames[i])
-                frames[i] = cv.undistort(frames[i], intrinsic_matrix, distortion_coef)
+                frames[i] = cv.undistort(frames[i], intrinsic_matrices[i], distortion_coefs[i])
                 # frames[i] = cv.medianBlur(frames[i],9)
                 # frames[i] = cv.GaussianBlur(frames[i],(9,9),0)
                 kernel = np.array(
                     [
                         [-2, -1, -1, -1, -2],
-                        [-1, 1, 3, 1, -1],
-                        [-1, 3, 4, 3, -1],
-                        [-1, 1, 3, 1, -1],
+                        [-1,  1,  3,  1, -1],
+                        [-1,  3,  4,  3, -1],
+                        [-1,  1,  3,  1, -1],
                         [-2, -1, -1, -1, -2],
                     ]
                 )
