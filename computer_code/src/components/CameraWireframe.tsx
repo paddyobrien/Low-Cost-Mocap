@@ -9,7 +9,12 @@ export default function CameraWireframe({R, t, toWorldCoordsMatrix}: {R: Array<A
     [-1,-0.85,1],
     [1,-0.85,1]
   ];
-  const indices = [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1];
+  const indices = [
+    0, 1, 2, 
+    0, 2, 3, 
+    0, 3, 4, 
+    0, 4, 1
+  ];
 
   let transformationMatrix = matrix([
     R[0].concat(t[0]),

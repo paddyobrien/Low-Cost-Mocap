@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { socket } from '../shared/styles/scripts/socket';
 import Toast from 'react-bootstrap/Toast';
+import Modal from './Modal';
 
 async function getState() {
     const url = "http://localhost:3001/api/camera_state";
@@ -39,7 +40,6 @@ export default function ConnectionManager({updateState}:{updateState: (json: Sta
         socket.on("connect", async () => {
             setIsConnected(true);
             const json = await getState();
-            console.log(json)
             updateState(json as State);
         });
         return () => {
@@ -52,30 +52,6 @@ export default function ConnectionManager({updateState}:{updateState: (json: Sta
     }
 
     return (
-        <>
-            <div style={{
-                zIndex: 1,
-                position: "fixed",
-                left: 0,
-                width: "100%",
-                top: 0,
-                height: "100%",
-                backgroundColor: "black",
-                opacity: 0.5
-            }} />
-            <Toast bg="danger" show={true} style={{
-                position: "fixed",
-                zIndex: 3,
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)"
-            }}>
-                <Toast.Header closeButton={false}>
-                    <img src="holder.js/20x20?text=%20" className="rounded me-2" alt="" />
-                    <strong className="me-auto">Connection Error</strong>
-                </Toast.Header>
-                <Toast.Body>Cannot connect to backend, please (re)start the python server.</Toast.Body>
-            </Toast>
-        </>
+        <Modal headerText="Connection Error" bodyText="Cannot connect to backend, please (re)start the python server." />
     );
 }
