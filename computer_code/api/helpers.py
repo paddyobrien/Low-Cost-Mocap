@@ -92,6 +92,7 @@ def bundle_adjustment(image_points, camera_poses):
     res = optimize.least_squares(
         residual_function, init_params, verbose=2, loss="linear", ftol=1e-9
     )
+    
     return params_to_camera_poses(res.x)[0]
 
 # a much dumber bundle adjustment that just does rotation adjustments
@@ -125,7 +126,8 @@ def bundle_adjustment2(image_points, camera_poses):
     res = optimize.least_squares(
         residual_function, init_params, verbose=2, loss="linear", ftol=1e-9
     )
-    return params_to_camera_poses(res.x)
+
+    return camera_poses
 
 
 def triangulate_point(image_points, camera_poses):
@@ -375,11 +377,19 @@ def drawlines(img1, lines):
         img1 = cv.line(img1, (x0, y0), (x1, y1), color, 1)
     return img1
 
+# TODO - Camera poses probably deserve their own type that can be marshalled at the api boundary
 def camera_poses_to_serializable(camera_poses):
     for i in range(0, len(camera_poses)):
         camera_poses[i] = {k: v.tolist() for (k, v) in camera_poses[i].items()}
 
     return camera_poses
+
+def camera_pose_to_internal(serialized_camera_poses):
+    for i in range(0, len(serialized_camera_poses)):
+        serialized_camera_poses[i] = {k: np.array(v) for (k, v) in serialized_camera_poses[i].items()}
+
+    return serialized_camera_poses
+
 
 # Opportunity for performance improvements here. This doesn't change
 # for a given capture but is recalculated fairly deep down the run loop

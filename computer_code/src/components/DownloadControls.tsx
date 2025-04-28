@@ -3,7 +3,6 @@ import { socket } from "../shared/styles/scripts/socket";
 import { Button } from "react-bootstrap";
 
 function createCSV(filename: string, data: [][], times: []) {
-    debugger;
     const link = document.createElement('a');
     link.style.display = 'none';
     document.body.appendChild(link);

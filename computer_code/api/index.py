@@ -17,6 +17,7 @@ from helpers import (
     bundle_adjustment,
     bundle_adjustment2,
     triangulate_points,
+    camera_pose_to_internal
 )
 
 app = Flask(__name__)
@@ -233,13 +234,8 @@ def capture_points(data):
 def calculate_bundle_adjustment(data):
     cameras = Cameras.instance()
     image_points = np.array(data["cameraPoints"])
-    camera_poses = data["cameraPoses"]
-    for i in range(0, cameras.num_cameras - 1):
-        p = camera_poses[i]['t']
-        print(p)
-        camera_poses[i]['t'] = np.array([p[0], p[1], p[2]])
-    print(camera_poses)
-    camera_poses = bundle_adjustment2(image_points, camera_poses)
+    camera_poses = camera_pose_to_internal(data["cameraPoses"])
+    camera_poses = bundle_adjustment(image_points, camera_poses)
 
     object_points = triangulate_points(image_points, camera_poses)
     error = np.mean(
@@ -367,7 +363,7 @@ def capture_image():
 def determine_scale(data):
     object_points = data["objectPoints"]
     camera_poses = data["cameraPoses"]
-    actual_distance = 0.131
+    actual_distance = 0.119
     observed_distances = []
 
     for object_points_i in object_points:
