@@ -5,7 +5,7 @@ import numpy as np
 import os
 import glob
  
-cam_images_folder_name = 'cam_4'
+cam_images_folder_name = 'cam_4_wide'
 cam_images_folder_name_calibrated = f'{cam_images_folder_name}_c'
 
 # Defining the dimensions of checkerboard

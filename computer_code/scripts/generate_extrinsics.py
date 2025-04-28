@@ -12,8 +12,8 @@ class NumpyEncoder(json.JSONEncoder):
 # Generate an extrinsic matrix based on the geometry of the motion capture
 # assumes a square arrangement on a single plane
 
-side = 0.3
-depth = 0.2
+side = 0.31
+depth = 0.27
 half_side = side/2
 y_angle = 45
 x_angle = math.degrees(math.atan(depth/half_side)) * -1
@@ -43,6 +43,3 @@ pose = [
 ]
 
 print(json.dumps(pose, cls=NumpyEncoder))
-
-r = create_rotation(x_angle, y_angle)
-print(r.as_rotvec())
