@@ -1,4 +1,3 @@
-import copy
 from sklearn.linear_model import RANSACRegressor
 import time
 import cv2 as cv
@@ -15,7 +14,6 @@ from helpers import (
     camera_poses_to_serializable,
     calculate_reprojection_errors,
     bundle_adjustment,
-    bundle_adjustment2,
     triangulate_points,
     camera_pose_to_internal
 )
@@ -23,12 +21,6 @@ from helpers import (
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
-try:
-    cameras = Cameras.instance()
-except Exception as e:
-    print(e)
-    print("Failed to initialize cameras, check connections and try again")
-    exit()
 
 @app.route("/api/camera-stream")
 def camera_stream():
@@ -41,9 +33,9 @@ def camera_stream():
     cameras.set_socketio(socketio)
 
     def gen(cameras, camera):
-        frequency = 150
+        frequency = 180
         loop_interval = 1.0 / frequency
-        last_run_time = 0
+        last_ten_frames_time = 0
         i = 0
 
         while True:
@@ -51,11 +43,11 @@ def camera_stream():
 
             i = (i + 1) % 10
             if i == 0:
-                socketio.emit("fps", {"fps": round(1 / (time_now - last_run_time))})
+                avg_for_last_10_frames = (time_now - last_ten_frames_time)/10
+                socketio.emit("fps", {"fps": round(1 / avg_for_last_10_frames)})
+                last_ten_frames_time = time.time()
 
-            if time_now - last_run_time < loop_interval:
-                time.sleep(last_run_time - time_now + loop_interval)
-            last_run_time = time.time()
+            time.sleep(loop_interval)
             frames = cameras.get_frames(camera)
             jpeg_frame = cv.imencode(".jpg", frames)[1].tobytes()
 
@@ -73,7 +65,6 @@ def camera_state():
     cameras = Cameras.instance()
 
     return cameras.state()
-
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):
@@ -219,16 +210,6 @@ def change_camera_settings(data):
     cameras.edit_settings(data["exposure"], data["gain"])
 
 
-@socketio.on("capture-points")
-def capture_points(data):
-    start_or_stop = data["startOrStop"]
-    cameras = Cameras.instance()
-
-    if start_or_stop == "start":
-        cameras.start_capturing_points()
-        return
-    elif start_or_stop == "stop":
-        cameras.stop_capturing_points()
 
 @socketio.on("calculate-bundle-adjustment")
 def calculate_bundle_adjustment(data):
@@ -331,6 +312,39 @@ def calculate_camera_pose(data):
     )
     socketio.emit("success", f"Camera pose updated {error}")
 
+@socketio.on("image-processing")
+def start_or_stop_image_processing(data):
+    cameras = Cameras.instance()
+    start_or_stop = data["startOrStop"]
+
+    if start_or_stop == "start":
+        cameras.start_image_processing()
+    elif start_or_stop == "stop":
+        cameras.stop_image_processing()
+
+@socketio.on("capture-points")
+def capture_points(data):
+    start_or_stop = data["startOrStop"]
+    cameras = Cameras.instance()
+
+    if start_or_stop == "start":
+        cameras.start_capturing_points()
+        return
+    elif start_or_stop == "stop":
+        cameras.stop_capturing_points()
+
+@socketio.on("triangulate-points")
+def live_mocap(data):
+    cameras = Cameras.instance()
+    start_or_stop = data["startOrStop"]
+    camera_poses = data["cameraPoses"]
+    cameras.to_world_coords_matrix = data["toWorldCoordsMatrix"]
+
+    if start_or_stop == "start":
+        cameras.start_triangulating_points(camera_poses)
+        return
+    elif start_or_stop == "stop":
+        cameras.stop_triangulating_points()
 
 @socketio.on("locate-objects")
 def start_or_stop_locating_objects(data):
@@ -343,21 +357,11 @@ def start_or_stop_locating_objects(data):
     elif start_or_stop == "stop":
         cameras.stop_locating_objects()
 
-@socketio.on("image-processing")
-def start_or_stop_image_processing(data):
-    cameras = Cameras.instance()
-    start_or_stop = data["startOrStop"]
-
-    if start_or_stop == "start":
-        cameras.is_processing_images = True
-        return
-    elif start_or_stop == "stop":
-        cameras.is_processing_images = False
 
 @socketio.on("capture_image")
 def capture_image():
     cameras = Cameras.instance()
-    cameras.capture_next_image = True
+    cameras.save_image()
 
 @socketio.on("determine-scale")
 def determine_scale(data):
@@ -385,21 +389,8 @@ def determine_scale(data):
     socketio.emit("camera-pose", {"error": None, "camera_poses": camera_poses})
 
 
-@socketio.on("triangulate-points")
-def live_mocap(data):
-    cameras = Cameras.instance()
-    start_or_stop = data["startOrStop"]
-    camera_poses = data["cameraPoses"]
-    cameras.to_world_coords_matrix = data["toWorldCoordsMatrix"]
-
-    if start_or_stop == "start":
-        cameras.start_trangulating_points(camera_poses)
-        return
-    elif start_or_stop == "stop":
-        cameras.stop_trangulating_points()
-
-
 if __name__ == "__main__":
+    cameras = Cameras.instance()
     try:
         socketio.run(app, port=3001, debug=True, use_reloader=False)
         socketio.emit("started")

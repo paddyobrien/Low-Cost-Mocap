@@ -183,7 +183,7 @@ def find_point_correspondance_and_object_points(image_points, camera_poses, fram
 
     root_image_points = [{"camera": 0, "point": point} for point in image_points[0]]
 
-    for i in range(1, len(camera_poses)):
+    for i in range(1, len(frames)):
         epipolar_lines = []
         for root_image_point in root_image_points:
             F = cv.sfm.fundamentalFromProjections(Ps[root_image_point["camera"]], Ps[i])
