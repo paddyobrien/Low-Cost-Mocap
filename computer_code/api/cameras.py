@@ -28,7 +28,7 @@ class Cameras:
         print("\nInitializing cameras")
         try:
             self.cameras = Camera(
-                fps=100, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
+                fps=125, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
             )
             self.capture_state = States.ImageProcessing
         except:
