@@ -33,19 +33,18 @@ def camera_stream():
     cameras.set_socketio(socketio)
 
     def gen(cameras, camera):
-        frequency = 180
-        loop_interval = 1.0 / frequency
-        last_ten_frames_time = 0
+        last_frame_time = 0
+        frame_size = 20
         i = 0
 
         while True:
             time_now = time.time()
 
-            i = (i + 1) % 10
+            i = (i + 1) % frame_size
             if i == 0:
-                avg_for_last_10_frames = (time_now - last_ten_frames_time)/10
-                socketio.emit("fps", {"fps": round(1 / avg_for_last_10_frames)})
-                last_ten_frames_time = time.time()
+                fps_frame_average = (time_now - last_frame_time)/frame_size
+                socketio.emit("fps", {"fps": round(1 / fps_frame_average)})
+                last_frame_time = time.time()
 
             frames = cameras.get_frames(camera)
             jpeg_frame = cv.imencode(".jpg", frames)[1].tobytes()

@@ -13,6 +13,7 @@ from helpers import (
     make_square,
 )
 
+DEFAULT_FPS = 125
 class States():
     CamerasNotFound = 0
     CamerasFound = 1
@@ -25,29 +26,30 @@ class States():
 @Singleton
 class Cameras:
     def __init__(self):
-        print("\nInitializing cameras")
-        try:
-            self.cameras = Camera(
-                fps=125, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
-            )
-            self.capture_state = States.ImageProcessing
-        except:
-            self.capture_state = States.CamerasNotFound
-            
-
-        if self.capture_state >= States.CamerasFound:
-            self.num_cameras = len(self.cameras.exposure)
-            print(f"\n{self.num_cameras} cameras found")
-        else:
-            self.num_cameras = 0
-            print(f"Failed to find cameras, please check connections")
-
         self.camera_poses = None
         self.projection_matrices = None
         self.to_world_coords_matrix = None
 
         self.kalman_filter = KalmanFilter(1)
         self.socketio = None
+        self.initialize_cameras(DEFAULT_FPS)    
+
+    def initialize_cameras(self, target_fps):
+        print("\nInitializing cameras")
+        try:
+            self.cameras = Camera(
+                fps=target_fps, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
+            )
+            self.capture_state = States.ImageProcessing
+        except:
+            self.capture_state = States.CamerasNotFound
+            
+        if self.capture_state >= States.CamerasFound:
+            self.num_cameras = len(self.cameras.exposure)
+            print(f"\n{self.num_cameras} cameras found")
+        else:
+            self.num_cameras = 0
+            print(f"Failed to find cameras, please check connections")
 
     def end(self):
         self.cameras.end()
