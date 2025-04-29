@@ -28,7 +28,7 @@ class Cameras:
         print("\nInitializing cameras")
         try:
             self.cameras = Camera(
-                fps=90, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
+                fps=100, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
             )
             self.capture_state = States.ImageProcessing
         except:
@@ -102,7 +102,8 @@ class Cameras:
         if self.capture_state >= States.ObjectDetection:
             objects, filtered_objects = self._object_detection(object_points, errors)
 
-        self._emit_data(image_points, object_points, errors, objects, filtered_objects)
+        average_time = np.mean(timestamps)
+        self._emit_data(average_time, image_points, object_points, errors, objects, filtered_objects)
         return frames
 
     def get_frames(self, camera=None):
@@ -215,10 +216,7 @@ class Cameras:
             filtered_object["pos"] = filtered_object["pos"].tolist()
         return objects, filtered_objects
 
-    def _emit_data(self, image_points, object_points, errors, objects, filtered_objects):
-        now_ns = time.time_ns() # Time in nanoseconds
-        now_ms = int(now_ns / 1000000) 
-
+    def _emit_data(self, time, image_points, object_points, errors, objects, filtered_objects):
         # TODO - Use only one message, front end can figure out shape based on capture state
         if any(np.all(point[0] != [None, None]) for point in image_points):
             if self.capture_state == States.PointCapture:
@@ -228,7 +226,7 @@ class Cameras:
                     "object-points",
                     {
                         "object_points": object_points.tolist(),
-                        "time_ms": now_ms, 
+                        "time_ms": time, 
                         "image_points": image_points,
                         "errors": errors.tolist(),
                         "objects": [

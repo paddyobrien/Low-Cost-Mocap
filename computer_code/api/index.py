@@ -47,7 +47,6 @@ def camera_stream():
                 socketio.emit("fps", {"fps": round(1 / avg_for_last_10_frames)})
                 last_ten_frames_time = time.time()
 
-            time.sleep(loop_interval)
             frames = cameras.get_frames(camera)
             jpeg_frame = cv.imencode(".jpg", frames)[1].tobytes()
 
