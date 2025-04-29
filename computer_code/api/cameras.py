@@ -4,7 +4,7 @@ import uuid
 import numpy as np
 import cv2 as cv
 from settings import intrinsic_matrices, distortion_coefs
-from pseyepy import Camera
+from pseyepy import Camera, cam_count
 from Singleton import Singleton
 from KalmanFilter import KalmanFilter
 from helpers import (
@@ -43,10 +43,9 @@ class Cameras:
             self.capture_state = States.ImageProcessing
         except:
             self.capture_state = States.CamerasNotFound
-            
+
         if self.capture_state >= States.CamerasFound:
-            self.num_cameras = len(self.cameras.exposure)
-            print(f"\n{self.num_cameras} cameras found")
+            print(f"{cam_count()} cameras found")
         else:
             self.num_cameras = 0
             print(f"Failed to find cameras, please check connections")
@@ -54,7 +53,7 @@ class Cameras:
     def end(self):
         self.cameras.end()
 
-    # TODO - Method deprecated, remove from frontend
+    # TODO - Method deprecated, remove from frontend, rename capture_state to just state
     def state(self):
         return {
             "is_processing_images": self.capture_state >= States.ImageProcessing,
