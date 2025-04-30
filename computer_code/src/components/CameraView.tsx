@@ -29,7 +29,7 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
     const triangulationEnabled = mocapState >= States.Triangulation;
 
     return (
-        <Container fluid={true}>
+        <Container fluid={true} className="p-2 shadow-lg container-card">
             <Row>
                 <Col>
                     <CameraSettings />

@@ -1,0 +1,75 @@
+import { MutableRefObject, useEffect, useState } from "react"
+import { Button, Col, Container, Row } from "react-bootstrap"
+import InfoTooltip from "./InfoTooltip"
+import { socket } from "../lib/socket"
+import { States } from "../lib/states"
+import SmallHeader from "./SmallHeader"
+
+interface Props {
+    mocapState: States,
+    cameraPoses: any,
+    toWorldCoordsMatrix: any,
+    objectPoints: MutableRefObject<number[][][]>,
+}
+
+export default function OriginCalibration({mocapState, toWorldCoordsMatrix, cameraPoses, objectPoints}: Props) {
+    const [captureNextPoint, setCaptureNextPoint] = useState(false)
+    useEffect(() => {
+        objectPoints.current = [];
+    })
+    useEffect(() => {
+        socket.on("object-points", (data) => {
+            if (captureNextPoint) {
+                data["object_points"]
+                socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
+                objectPoints.current.push()
+            }
+        })
+    
+        return () => {
+          socket.off("object-points")
+        }
+      }, [captureNextPoint, toWorldCoordsMatrix])
+    const objectPointsEnabled = mocapState >= States.Triangulation
+    const countOfPoints = objectPoints.current.length
+    return (
+        <Container fluid={true} className="container-card">
+            <Row className="pt-2">
+                <Col>
+                <InfoTooltip disabled={objectPointsEnabled} message="Enable triangulation to set origin">
+                    <Button
+                        size='sm'
+                        variant="outline-primary"
+                        className="mr-2"
+                        disabled={!objectPointsEnabled}
+                        onClick={() => {
+                            setCaptureNextPoint(true);
+                        }
+                    }>
+                        Set origin
+                    </Button>
+                </InfoTooltip>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                <details>
+                    <summary>Calibration procedure</summary>
+                    <p>Use this procedure to set the world origin.</p>
+                    <ol>
+                        <li>Turn on <em>one</em> light on the tracker object.</li>
+                        <li>Enable <em>Triangulation</em></li>
+                        <li>Place the object wherever you would like the origin to be.</li>
+                        <li>Click <em>Set origin</em></li>
+                    </ol>
+                </details>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                
+                </Col>
+            </Row>
+        </Container>
+    )
+}

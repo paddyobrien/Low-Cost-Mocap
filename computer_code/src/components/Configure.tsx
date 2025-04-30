@@ -2,12 +2,17 @@ import { Button, Col, Container, Form, Row, Tab, Tabs } from "react-bootstrap"
 import CameraPoseCalibration from "./CameraPoseCalibration"
 import { socket } from "../lib/socket"
 import { States } from "../lib/states"
-import { useRef } from "react"
+import { MutableRefObject, useRef } from "react"
+import SmallHeader from "./SmallHeader"
+import ScaleCalibration from "./ScaleCalibration"
+import AlignmentCalibration from "./AlignmentCalibration"
+import OriginCalibration from "./OriginCalibration"
 
 interface Props {
     mocapState: States,
     cameraPoses: any,
     toWorldCoordsMatrix: any,
+    objectPoints: MutableRefObject<number[][][]>,
     setCameraPoses: (s: any) => void,
     setToWorldCoordsMatrix: (s: any) => void
     setParsedCapturedPointsForPose: (s: Array<Array<Array<number>>>) => void
@@ -17,80 +22,67 @@ export default function Configure({
     mocapState,
     cameraPoses,
     toWorldCoordsMatrix,
+    objectPoints,
     setCameraPoses,
     setToWorldCoordsMatrix,
     setParsedCapturedPointsForPose,
 }: Props) {
     const isTriangulatingPoints = mocapState >= States.Triangulation;
-    // TODO - Capture object points
-    const objectPoints = useRef([])
     return (
-        <Container fluid={true}>
+        <Container fluid={true} className="p-2 shadow-lg container-card">
             <Row>
                 <Col>
-                    Current camera poses:
-                        <Form.Control
-                            value={JSON.stringify(cameraPoses)}
-                            onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
-                            />
+                    <SmallHeader>Current camera pose</SmallHeader>
+                    <Form.Control
+                        value={JSON.stringify(cameraPoses)}
+                        onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
+                    />
+                </Col>
+            </Row>
+            <Row className="mb-4">
+                <Col xs={4} className='pt-2'>
+                    <SmallHeader>Current To World Matrix:</SmallHeader>
+                    <Form.Control
+                        value={JSON.stringify(toWorldCoordsMatrix)}
+                        onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
+                    />
                 </Col>
             </Row>
             <Row>
-                <Col xs={4} className='pt-2'>
-                Current To World Matrix:
-                <Form.Control
-                value={JSON.stringify(toWorldCoordsMatrix)}
-                onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
-                />
-            </Col>
-            </Row>
-            <Row className="mt-2">
                 <Col>
                     <Tabs
-                    defaultActiveKey="pose"
-                    id="uncontrolled-tab-example"
-                    className="mb-3"
-                    > 
-                        <Tab eventKey="pose" title="Calibrate pose">
-                            <CameraPoseCalibration cameraPoses={cameraPoses} setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
+                        defaultActiveKey="pose"
+                        id="uncontrolled-tab-example"
+                    >
+                        <Tab eventKey="pose" title="📍Calibrate pose">
+                            <CameraPoseCalibration 
+                                mocapState={mocapState}
+                                cameraPoses={cameraPoses}
+                                setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} 
+                            />
                         </Tab>
-                        <Tab eventKey="scale" title="Set scale">
-                            <Button
-                                size='sm'
-                                className="mr-2"
-                                variant="outline-secondary"
-                                disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                                onClick={() => {
-                                    socket.emit("determine-scale", { objectPoints: objectPoints.current, cameraPoses: cameraPoses })
-                                }
-                            }>
-                                Set scale
-                            </Button>
+                        <Tab eventKey="scale" title="📏 Set scale">
+                            <ScaleCalibration 
+                                mocapState={mocapState}
+                                cameraPoses={cameraPoses}
+                                objectPoints={objectPoints}
+                            />
                         </Tab>
-                        <Tab eventKey="align" title="Align">
-                            <Button
-                                size='sm'
-                                variant="outline-secondary"
-                                disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                                onClick={() => {
-                                    socket.emit("acquire-floor", { objectPoints: objectPoints.current, cameraPoses, toWorldCoordsMatrix })
-                                }
-                            }>
-                                Acquire Floor
-                            </Button>
+                        <Tab eventKey="align" title="→ Align">
+                            <AlignmentCalibration
+                                mocapState={mocapState}
+                                cameraPoses={cameraPoses}
+                                toWorldCoordsMatrix={toWorldCoordsMatrix}
+                                objectPoints={objectPoints}
+                            />
                         </Tab>
-                        <Tab eventKey="origin" title="Set origin">
-                            <Button
-                                size='sm'
-                                className="mr-2"
-                                variant="outline-secondary"
-                                disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                                onClick={() => {
-                                    socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
-                                }
-                                }>
-                                Set origin
-                            </Button>
+                        <Tab eventKey="origin" title="Ｘ Set origin">
+                            <OriginCalibration 
+                                mocapState={mocapState}
+                                cameraPoses={cameraPoses}
+                                toWorldCoordsMatrix={toWorldCoordsMatrix}
+                                objectPoints={objectPoints}
+                            />
                         </Tab>
                     </Tabs>
                 </Col>

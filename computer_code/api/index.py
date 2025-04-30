@@ -66,55 +66,7 @@ def camera_state():
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):
-    cameras = Cameras.instance()
-    object_points = np.array([item for sublist in data["objectPoints"] for item in sublist])
-    
-    # 1. Fit floor plane (SVD)
-    centroid = np.mean(object_points, axis=0)
-    points_centered = object_points - centroid
-    U, s, Vh = np.linalg.svd(points_centered)
-    a, b, c = Vh[2, :]  # Raw floor normal ([0.0076, -0.0565, 0.9983])
-    current_normal = np.array([a, b, c])
-    if current_normal[2] < 0:
-        current_normal *= -1  # Ensure Z points up
-
-    # 2. Target normal: Z-up ([0,0,1])
-    target_normal = np.array([0, 0, 1])
-
-    # 3. Compute rotation (Rodrigues)
-    v = np.cross(current_normal, target_normal)
-    c_theta = np.dot(current_normal, target_normal)
-    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    rotation = np.eye(3) + kmat + kmat @ kmat * (1 / (1 + c_theta))
-
-    # 4. Apply rotation to existing matrix
-    existing_matrix = np.array(data["toWorldCoordsMatrix"])
-    new_matrix = existing_matrix.copy()
-    new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
-
-    # 5. Check alignment: Compute error before/after
-    old_error = np.abs(np.dot(existing_matrix[:3, 2], current_normal) - 1)  # Current misalignment
-    transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
-    new_error = np.max(np.abs(transformed_points[2, :]))  # New floor error
-
-    # 6. Reverse rotation if error increases
-    if new_error > old_error:
-        rotation = np.eye(3) - kmat + kmat @ kmat * (1 / (1 - c_theta))  # Reverse direction
-        new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
-        transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
-        new_error = np.max(np.abs(transformed_points[2, :]))
-
-    # 7. Force floor to z=0
-    new_matrix[2, 3] = -np.dot(target_normal, centroid)
-
-    # 8. Update system
-    cameras.to_world_coords_matrix = new_matrix
-    socketio.emit(
-        "to-world-coords-matrix",
-        {"to_world_coords_matrix": new_matrix.tolist()},
-    )
-    print(f"Alignment error: {new_error:.6f} (should be close to 0)")
-# @socketio.on("acquire-floor")
+    # @socketio.on("acquire-floor")
 # def acquire_floor(data):
 #     cameras = Cameras.instance()
 #     object_points = data["objectPoints"]
@@ -177,7 +129,54 @@ def acquire_floor(data):
 #         "to-world-coords-matrix",
 #         {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
 #     )
+    cameras = Cameras.instance()
+    object_points = np.array([item for sublist in data["objectPoints"] for item in sublist])
+    
+    # 1. Fit floor plane (SVD)
+    centroid = np.mean(object_points, axis=0)
+    points_centered = object_points - centroid
+    U, s, Vh = np.linalg.svd(points_centered)
+    a, b, c = Vh[2, :]  # Raw floor normal ([0.0076, -0.0565, 0.9983])
+    current_normal = np.array([a, b, c])
+    if current_normal[2] < 0:
+        current_normal *= -1  # Ensure Z points up
 
+    # 2. Target normal: Z-up ([0,0,1])
+    target_normal = np.array([0, 0, 1])
+
+    # 3. Compute rotation (Rodrigues)
+    v = np.cross(current_normal, target_normal)
+    c_theta = np.dot(current_normal, target_normal)
+    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    rotation = np.eye(3) + kmat + kmat @ kmat * (1 / (1 + c_theta))
+
+    # 4. Apply rotation to existing matrix
+    existing_matrix = np.array(cameras.to_world_coords_matrix)
+    new_matrix = existing_matrix.copy()
+    new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
+
+    # 5. Check alignment: Compute error before/after
+    old_error = np.abs(np.dot(existing_matrix[:3, 2], current_normal) - 1)  # Current misalignment
+    transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
+    new_error = np.max(np.abs(transformed_points[2, :]))  # New floor error
+
+    # 6. Reverse rotation if error increases
+    if new_error > old_error:
+        rotation = np.eye(3) - kmat + kmat @ kmat * (1 / (1 - c_theta))  # Reverse direction
+        new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
+        transformed_points = (new_matrix @ np.column_stack([object_points, np.ones(len(object_points))]).T)[:3, :]
+        new_error = np.max(np.abs(transformed_points[2, :]))
+
+    # 7. Force floor to z=0
+    new_matrix[2, 3] = -np.dot(target_normal, centroid)
+
+    # 8. Update system
+    cameras.to_world_coords_matrix = new_matrix
+    socketio.emit(
+        "to-world-coords-matrix",
+        {"to_world_coords_matrix": new_matrix.tolist()},
+    )
+    print(f"Alignment error: {new_error:.6f} (should be close to 0)")
 
 @socketio.on("set-origin")
 def set_origin(data):
@@ -200,14 +199,11 @@ def set_origin(data):
         {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
     )
 
-
 @socketio.on("update-camera-settings")
 def change_camera_settings(data):
     cameras = Cameras.instance()
 
     cameras.edit_settings(data["exposure"], data["gain"])
-
-
 
 @socketio.on("calculate-bundle-adjustment")
 def calculate_bundle_adjustment(data):
@@ -310,40 +306,6 @@ def calculate_camera_pose(data):
     )
     socketio.emit("success", f"Camera pose updated {error}")
 
-@socketio.on("image-processing")
-def start_or_stop_image_processing(data):
-    cameras = Cameras.instance()
-    start_or_stop = data["startOrStop"]
-
-    if start_or_stop == "start":
-        cameras.start_image_processing()
-    elif start_or_stop == "stop":
-        cameras.stop_image_processing()
-
-@socketio.on("capture-points")
-def capture_points(data):
-    start_or_stop = data["startOrStop"]
-    cameras = Cameras.instance()
-
-    if start_or_stop == "start":
-        cameras.start_capturing_points()
-        return
-    elif start_or_stop == "stop":
-        cameras.stop_capturing_points()
-
-@socketio.on("triangulate-points")
-def live_mocap(data):
-    cameras = Cameras.instance()
-    start_or_stop = data["startOrStop"]
-    camera_poses = data["cameraPoses"]
-    cameras.to_world_coords_matrix = data["toWorldCoordsMatrix"]
-
-    if start_or_stop == "start":
-        cameras.start_triangulating_points(camera_poses)
-        return
-    elif start_or_stop == "stop":
-        cameras.stop_triangulating_points()
-
 @socketio.on("locate-objects")
 def start_or_stop_locating_objects(data):
     cameras = Cameras.instance()
@@ -368,7 +330,8 @@ def capture_image():
 @socketio.on("determine-scale")
 def determine_scale(data):
     object_points = data["objectPoints"]
-    camera_poses = data["cameraPoses"]
+    cameras = Cameras.instance()
+    camera_poses = cameras.camera_poses
     actual_distance = 0.119
     observed_distances = []
 
@@ -385,9 +348,10 @@ def determine_scale(data):
     print("Scaling")
     print(scale_factor)
     print("-----")
+    
     for i in range(0, len(camera_poses)):
         camera_poses[i]["t"] = (np.array(camera_poses[i]["t"]) * scale_factor).tolist()
-
+    cameras.set_camera_poses(camera_poses)
     socketio.emit("camera-pose", {"error": None, "camera_poses": camera_poses})
 
 

@@ -37,7 +37,7 @@ function createJSONL(filename: string, data: [][], times: []) {
     link.click();
 }
 
-export default function DownloadControls({label, objectPoints, objectPointTimes, type }) {
+export default function DownloadControls({label, objectPoints, objectPointTimes, type, lastObjectPointTimestamp }) {
 
     return <><Button
         size="sm"
