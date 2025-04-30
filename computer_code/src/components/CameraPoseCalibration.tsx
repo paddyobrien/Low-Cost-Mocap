@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { socket } from '../shared/styles/scripts/socket';
+import { socket } from '../lib/socket';
 import { Button, Col, Overlay } from 'react-bootstrap';
 
 const isValidJson = (str: string) => {

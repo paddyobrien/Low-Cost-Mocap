@@ -1,5 +1,4 @@
 import os
-import time
 import uuid
 import numpy as np
 import cv2 as cv
@@ -14,7 +13,11 @@ from helpers import (
 )
 
 DEFAULT_FPS = 125
+
+
+# This enum is also defined in states.ts in the front end, keep them in sync
 class States():
+    Initializing = -1,
     CamerasNotFound = 0
     CamerasFound = 1
     SaveImage = 2
@@ -23,6 +26,14 @@ class States():
     Triangulation = 5
     ObjectDetection = 6
 
+Transitions = {
+    States.SaveImage: [States.CamerasFound],
+    States.CamerasFound: [States.ImageProcessing, States.SaveImage],
+    States.ImageProcessing: [States.CamerasFound, States.PointCapture],
+    States.PointCapture: [States.ImageProcessing, States.Triangulation],
+    States.Triangulation: [States.PointCapture, States.ObjectDetection],
+    States.ObjectDetection: [States.Triangulation],
+}
 @Singleton
 class Cameras:
     def __init__(self):
@@ -45,7 +56,8 @@ class Cameras:
             self.capture_state = States.CamerasNotFound
 
         if self.capture_state >= States.CamerasFound:
-            print(f"{cam_count()} cameras found")
+            self.num_cameras = cam_count()
+            print(f"{self.num_cameras} cameras found")
         else:
             self.num_cameras = 0
             print(f"Failed to find cameras, please check connections")
@@ -89,7 +101,7 @@ class Cameras:
 
         if self.capture_state == States.SaveImage:
             self._capture_image(frames)
-            self.exit_save_image()
+            self.change_state(States.CamerasFound)
 
         if self.capture_state >= States.ImageProcessing:
             frames = self._image_processing(frames)
@@ -241,47 +253,10 @@ class Cameras:
                     },
                 )
 
-    # State change functions 
-    def save_image(self):
-        self._state_change(States.SaveImage, [States.CamerasFound])
-    
-    def exit_save_image(self):
-        self._state_change(States.CamerasFound, [States.SaveImage])
-
-    def start_image_processing(self):
-        self._state_change(States.ImageProcessing, [States.CamerasFound])
-    
-    def stop_image_processing(self):
-        self._state_change(States.CamerasFound, [States.ImageProcessing])
-
-    def start_capturing_points(self):
-        self._state_change(States.PointCapture, [States.ImageProcessing])
-
-    def stop_capturing_points(self):
-        self._state_change(States.ImageProcessing, [States.PointCapture])
-
-    def start_triangulating_points(self, camera_poses):
-        self.camera_poses = camera_poses
-        self._state_change(States.Triangulation, [States.PointCapture])
-        
-    def stop_triangulating_points(self):
-        self._state_change(States.PointCapture, [States.Triangulation])
-        self.camera_poses = None
-
-    def start_object_detection(self):
-        self._state_change(States.ObjectDetection, [States.Triangulation])
-    
-    def stop_object_detection(self):
-        self._state_change(States.Triangulation, [States.ObjectDetection])
-
-    def start_locating_objects(self):
-        self.is_locating_objects = True
-
-    def stop_locating_objects(self):
-        self.is_locating_objects = False
-
-    def _state_change(self, target_state, valid_source_states):
+    def change_state(self, target_state):
+        valid_source_states = Transitions[target_state]
         if self.capture_state in valid_source_states:
             self.capture_state = target_state
+            self.socketio.emit("state_change", self.capture_state)
             return
         raise RuntimeError(f"Change failed, cannot go from {self.capture_state} to {target_state}")

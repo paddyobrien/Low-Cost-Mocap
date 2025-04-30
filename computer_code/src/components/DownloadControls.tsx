@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { socket } from "../shared/styles/scripts/socket";
+import { socket } from "../lib/socket";
 import { Button } from "react-bootstrap";
 
 function createCSV(filename: string, data: [][], times: []) {

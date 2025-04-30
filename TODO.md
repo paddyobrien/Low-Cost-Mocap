@@ -1,0 +1,13 @@
+- Repeatable build
+    - Get python package manager setup
+    - Decide if docker or a local setup is easier
+- Add a configuration object for intrinsics, pose etc
+    - Really get a better model in the backend
+    - Assign stable indexes to cameras
+        - USB identified not exposed would need upstream changes in pseyepy
+    - Make point distance more explicit
+- Redesign front-end
+    - Cleaner separation of config time and capture time
+    - Channel for communicating status updates from backend
+    - Single file (zip) download format with file naming
+- Go another round with floor acquisition

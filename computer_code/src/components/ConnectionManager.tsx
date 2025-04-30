@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { socket } from '../shared/styles/scripts/socket';
+import { socket } from '../lib/socket';
 import Toast from 'react-bootstrap/Toast';
 import Modal from './Modal';
 

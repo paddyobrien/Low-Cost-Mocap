@@ -1,14 +1,9 @@
-import { socket } from '../shared/styles/scripts/socket';
+import { socket } from '../lib/socket';
 import {ChangeEventHandler, FormEventHandler, useEffect, useRef, useState } from "react"
 import { Button, Col, Overlay } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 
-interface Props {
-    isProcessingImages: boolean,
-    setIsProcessingImages: (i: boolean) => void
-}
-
-export default function CameraSettings({isProcessingImages, setIsProcessingImages}: Props) {
+export default function CameraSettings() {
     const overlay = useRef();
     const [overlayVisible, setOverlayVisible] = useState(false);
     const [exposure, setExposure] = useState(100);
@@ -20,14 +15,6 @@ export default function CameraSettings({isProcessingImages, setIsProcessingImage
             exposure,
             gain,
         })
-    }
-
-    const updateImageProcessing: ChangeEventHandler = (e) => {
-        const startOrStop = e.target.checked ? "start" : "stop"
-        socket.emit("image-processing", {
-            startOrStop
-        })
-        setIsProcessingImages(e.target.checked)
     }
 
     return <>
@@ -43,7 +30,6 @@ export default function CameraSettings({isProcessingImages, setIsProcessingImage
                         <Form.Label>Gain: {gain}</Form.Label>
                         <Form.Range value={gain} onChange={(event) => setGain(parseFloat(event.target.value))} />
                     </Form.Group>
-                    <Form.Label column>Perform image processing: <Form.Check type="checkbox" checked={isProcessingImages} onChange={updateImageProcessing} /></Form.Label>
                 </Form>
             </div>
         </Overlay>

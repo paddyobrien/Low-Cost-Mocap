@@ -355,6 +355,10 @@ def start_or_stop_locating_objects(data):
     elif start_or_stop == "stop":
         cameras.stop_locating_objects()
 
+@socketio.on("change-mocap-state")
+def change_mocap_state(data):
+    cameras = Cameras.instance()
+    cameras.change_state(data)
 
 @socketio.on("capture_image")
 def capture_image():

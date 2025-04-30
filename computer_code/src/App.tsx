@@ -1,31 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Badge, Button, Card, Col, Container, Row } from 'react-bootstrap';
+import { Button, Card, Col, Container, Row } from 'react-bootstrap';
 import Form from 'react-bootstrap/Form';
 import { Tooltip } from 'react-tooltip'
-import CameraWireframe from './components/CameraWireframe';
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
-import Points from './components/Points';
-import { socket } from './shared/styles/scripts/socket';
-import Objects from './components/Objects';
+import { socket } from './lib/socket';
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
-import PosePoints from './components/PosePoints';
 import DownloadControls from './components/DownloadControls';
 import ConnectionManager, { State } from './components/ConnectionManager';
-import CameraSettings from './components/CameraSettings';
 import CameraPoseCalibration from './components/CameraPoseCalibration';
-
-const ALL_CAMS = "all"
+import WorldView from './components/WorldView';
+import CameraView from './components/CameraView';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
+import { States } from './lib/states';
+import useSocketListener from './hooks/useSocketListener';
 
 export default function App() {
-  const [cameraStreamRunning, setCameraStreamRunning] = useState(false);
-  const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [mocapState, setMocapState] = useState(States.ImageProcessing);
   const [isCapturingPoints, setIsCapturingPoints] = useState(false);
   const [parsedCapturedPointsForPose, setParsedCapturedPointsForPose] = useState<Array<Array<Array<number>>>>([]);
-  const [numCams, setNumCams] = useState(0);
-  const [activeCam, setActiveCam] = useState(ALL_CAMS);
 
   const [isTriangulatingPoints, setIsTriangulatingPoints] = useState(false);
   const [isLocatingObjects, setIsLocatingObjects] = useState(false);
@@ -38,50 +32,20 @@ export default function App() {
   const objects = useRef<Array<Array<Object>>>([])
   const [objectPointCount, setObjectPointCount] = useState(0);
 
-  const [fps, setFps] = useState(0);
-
   const [cameraPoses, setCameraPoses] = useState<Array<object>>(defaultCameraPose);
   const [toWorldCoordsMatrix, setToWorldCoordsMatrix] = useState<number[][]>(defaultWorldMatrix)
+
+  useSocketListener("state_change", setMocapState);
 
   const capturePoints = async (startOrStop: string) => {
     socket.emit("capture-points", { startOrStop })
   }
 
   const stateUpdater = useCallback((newState: State) => {
-    setIsProcessingImages(newState.is_processing_images);
     setIsCapturingPoints(newState.is_capturing_points);
     setIsTriangulatingPoints(newState.is_triangulating_points);
     setIsLocatingObjects(newState.is_locating_objects);
-    setCameraStreamRunning(false);
-    setTimeout(async () => {
-      setCameraStreamRunning(true);
-    }, 1000)
   }, [])
-
-  useEffect(() => {
-    socket.on("num-cams", (data) => {
-      setNumCams(data)
-    })
-
-    return () => {
-      socket.off("num-cams")
-    }
-  }, [numCams])
-
-  useEffect(() => {
-    socket.on("error", (msg) => {
-      console.log(msg)
-    });
-    socket.on("success", (msg) => {
-      console.log(msg)
-    });
-
-
-    return () => {
-      socket.off("error")
-      socket.off("success")
-    }
-  }, [numCams])
 
   useEffect(() => {
     socket.on("to-world-coords-matrix", (data) => {
@@ -122,52 +86,8 @@ export default function App() {
     }
   }, [])
 
-  useEffect(() => {
-    socket.on("fps", data => {
-      setFps(data["fps"])
-    })
-
-    return () => {
-      socket.off("fps")
-    }
-  }, [])
-
   const startLiveMocap = (startOrStop: string) => {
     socket.emit("triangulate-points", { startOrStop, cameraPoses, toWorldCoordsMatrix })
-  }
-
-  const captureImage = () => {
-    socket.emit("capture_image")
-  }
-
-  const getCameraButtons = (numCams: number) => {
-    let content = [];
-    content.push(<Button
-      size='sm'
-      className='me-3'
-      variant={"outline-primary"}
-      active={activeCam === ALL_CAMS}
-      onClick={() => {
-        setActiveCam(ALL_CAMS);
-      }}
-    >
-      All
-    </Button>
-    )
-    for (let i = 0; i < numCams; i++) {
-      content.push(<Button
-        size='sm'
-        className='me-3'
-        variant={"outline-primary"}
-        active={activeCam === i}
-        onClick={() => {
-          setActiveCam(i);
-        }}
-      >
-        Camera {i}
-      </Button>);
-    }
-    return content;
   }
 
   return (
@@ -177,50 +97,45 @@ export default function App() {
         <Col>
           <Card className='shadow-lg'>
             <Card.Header><h2>Weccap</h2></Card.Header>
+            <Tabs
+              defaultActiveKey="cameraView"
+              id="uncontrolled-tab-example"
+              className="mb-3"
+            >
+              <Tab eventKey="cameraView" title="Camera Feed">
+                <CameraView
+                    mocapState={mocapState}
+                    parsedCapturedPointsForPose={parsedCapturedPointsForPose}
+                  />
+              </Tab>
+              <Tab eventKey="worldView" title="World View">
+                <WorldView
+                  cameraPoses={cameraPoses} 
+                  toWorldCoordsMatrix={toWorldCoordsMatrix}
+                  objectPoints={objectPoints}
+                  objectPointErrors={objectPointErrors}
+                  objectPointCount={objectPointCount}
+                  filteredObjects={filteredObjects}
+                />
+              </Tab>
+            </Tabs>
             <Card.Body>
               <Row>
                 <Col xs={10}>
-                  <Button
-                    size='sm'
-                    className='me-3'
-                    variant={cameraStreamRunning ? "outline-danger" : "outline-success"}
-                    onClick={() => {
-                      setCameraStreamRunning(!cameraStreamRunning);
-                    }}
-                  >
-                    {cameraStreamRunning ? "Stop" : "Start camera stream"}
-                  </Button>
-                  {getCameraButtons(numCams)}
-                  <CameraSettings isProcessingImages={isProcessingImages} setIsProcessingImages={setIsProcessingImages} />
+
+
                   <CameraPoseCalibration cameraPoses={cameraPoses} setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
-                  <Button
-                    size="sm"
-                    className="me-3"
-                    variant="outline-secondary"
-                    onClick={captureImage}
-                  >
-                    Capture frame
-                  </Button>
-                </Col>
-                <Col style={{ textAlign: "right" }}>
-                  {cameraStreamRunning && <Badge style={{ minWidth: 80 }} bg={fps < 25 ? "danger" : fps < 60 ? "warning" : "success"}>FPS: {fps}</Badge>}
-                </Col>
-              </Row>
-              <Row className='mt-2 mb-1' style={{ height: "320px" }}>
-                <Col style={{ "position": "relative", paddingLeft: 10 }}>
-                  <img src={cameraStreamRunning ? `http://localhost:3001/api/camera-stream${activeCam === ALL_CAMS ? "" : `?camera=${activeCam}`}` : ""} />
-                  <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />
+                  
                 </Col>
               </Row>
               <Row>
                 <Col xs={10}>
                   <Tooltip id="collect-points-for-pose-button-tooltip" />
-                  <a data-tooltip-hidden={cameraStreamRunning} data-tooltip-variant='error' data-tooltip-id='collect-points-for-pose-button-tooltip' data-tooltip-content="Start camera stream first">
+                  <a  data-tooltip-variant='error' data-tooltip-id='collect-points-for-pose-button-tooltip' data-tooltip-content="Start camera stream first">
                     <Button
                       size='sm'
                       className="mr-2"
                       variant={isCapturingPoints ? "outline-danger" : "outline-primary"}
-                      disabled={!cameraStreamRunning}
                       onClick={() => {
                         setIsCapturingPoints(!isCapturingPoints);
                         capturePoints(isCapturingPoints ? "stop" : "start");
@@ -256,7 +171,6 @@ export default function App() {
                     size='sm'
                     className="mr-2"
                     variant={isLocatingObjects ? "outline-danger" : "outline-primary"}
-                    disabled={!cameraStreamRunning}
                     onClick={() => {
                       setIsLocatingObjects(!isLocatingObjects);
                       socket.emit("locate-objects", { startOrStop: isLocatingObjects ? "stop" : "start" })
@@ -313,18 +227,7 @@ export default function App() {
           <Card className='shadow-sm p-3'>
             <Row>
               <Col style={{ height: "1000px" }}>
-                <Canvas orthographic camera={{ zoom: 1000, position: [0, 0, 10] }}>
-                  <ambientLight />
-                  {cameraPoses.map(({ R, t }, i) => (
-                    <CameraWireframe R={R} t={t} toWorldCoordsMatrix={toWorldCoordsMatrix} key={i} />
-                  ))}
-                  <Points objectPointsRef={objectPoints} objectPointErrorsRef={objectPointErrors} count={objectPointCount} />
-                  <Objects filteredObjectsRef={filteredObjects} count={objectPointCount} />
-                  <OrbitControls />
-                  <axesHelper args={[0.2]} />
-                  <gridHelper args={[4, 4 * 10]} />
-                  <directionalLight />
-                </Canvas>
+                
               </Col>
             </Row>
           </Card>
