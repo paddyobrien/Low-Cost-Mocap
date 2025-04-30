@@ -15,6 +15,7 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 import { States } from './lib/states';
 import useSocketListener from './hooks/useSocketListener';
+import Configure from './components/Configure';
 
 export default function App() {
   const [mocapState, setMocapState] = useState(States.ImageProcessing);
@@ -92,23 +93,22 @@ export default function App() {
 
   return (
     <Container fluid>
-      <ConnectionManager updateState={stateUpdater} />
+      <ConnectionManager updateState={setMocapState} />
       <Row >
         <Col>
           <Card className='shadow-lg'>
-            <Card.Header><h2>Weccap</h2></Card.Header>
             <Tabs
               defaultActiveKey="cameraView"
               id="uncontrolled-tab-example"
               className="mb-3"
-            >
-              <Tab eventKey="cameraView" title="Camera Feed">
+            > 
+              <Tab eventKey="cameraView" title="🎥 Camera Feed">
                 <CameraView
                     mocapState={mocapState}
                     parsedCapturedPointsForPose={parsedCapturedPointsForPose}
                   />
               </Tab>
-              <Tab eventKey="worldView" title="World View">
+              <Tab eventKey="worldView" title="🌎 World View">
                 <WorldView
                   cameraPoses={cameraPoses} 
                   toWorldCoordsMatrix={toWorldCoordsMatrix}
@@ -119,18 +119,26 @@ export default function App() {
                 />
               </Tab>
             </Tabs>
-            <Card.Body>
-              <Row>
-                <Col xs={10}>
-
-
-                  <CameraPoseCalibration cameraPoses={cameraPoses} setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} />
-                  
-                </Col>
-              </Row>
-              <Row>
-                <Col xs={10}>
-                  <Tooltip id="collect-points-for-pose-button-tooltip" />
+          </Card>
+          <div style={{height: "30px"}}></div>
+          <Card className='shadow-lg'>
+            <Tabs
+              defaultActiveKey="configure"
+              id="uncontrolled-tab-example"
+              className="mb-3"
+            > 
+              <Tab eventKey="configure" title="⚙️ Configure">
+                <Configure 
+                  mocapState={mocapState}
+                  cameraPoses={cameraPoses}
+                  toWorldCoordsMatrix={toWorldCoordsMatrix}
+                  setCameraPoses={setCameraPoses}
+                  setToWorldCoordsMatrix={setToWorldCoordsMatrix}
+                  setParsedCapturedPointsForPose={setParsedCapturedPointsForPose}
+                />
+              </Tab>
+              <Tab eventKey="capture" title="⏺ Capture">
+              <Tooltip id="collect-points-for-pose-button-tooltip" />
                   <a  data-tooltip-variant='error' data-tooltip-id='collect-points-for-pose-button-tooltip' data-tooltip-content="Start camera stream first">
                     <Button
                       size='sm'
@@ -178,90 +186,17 @@ export default function App() {
                     }>
                     {isLocatingObjects ? "Stop" : "Start"} Locating
                   </Button>
-                  <Button
-                    size='sm'
-                    className="mr-2"
-                    variant="outline-primary"
-                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                    onClick={() => {
-                      socket.emit("determine-scale", { objectPoints: objectPoints.current, cameraPoses: cameraPoses })
-                    }
-                    }>
-                    Set scale
-                  </Button>
-                  <Button
-                    size='sm'
-                    className="mr-2"
-                    variant="outline-primary"
-                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                    onClick={() => {
-                      socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
-                    }
-                    }>
-                    Set origin
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant="outline-primary"
-                    disabled={!isTriangulatingPoints && objectPoints.current.length == 0}
-                    onClick={() => {
-                      socket.emit("acquire-floor", { objectPoints: objectPoints.current, cameraPoses, toWorldCoordsMatrix })
-                    }
-                    }>
-                    Acquire Floor
-                  </Button>
+                  
                   <div className="mt-2">
                   <DownloadControls type="csv" label="object points" objectPoints={objectPoints} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="csv" label="object errors" objectPoints={objectPointErrors} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="jsonl" label="image points" objectPoints={imagePoints} objectPointTimes={objectPointTimes} />
                   <DownloadControls type="jsonl" label="object track points" objectPoints={filteredObjects} objectPointTimes={objectPointTimes} />
                   </div>
-                </Col>
-              </Row>
-            </Card.Body>
+              </Tab>
+            </Tabs>
           </Card>
-        </Col>
-      </Row>
-      <Row className='pt-3'>
-        <Col>
-          <Card className='shadow-sm p-3'>
-            <Row>
-              <Col style={{ height: "1000px" }}>
-                
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-      <Row className='pt-3'>
-        <Col xs={4}>
-          <Card className='shadow-lg h-100'>
-            <Card.Header>Configuration</Card.Header>
-            <Card.Body>
-              <Row className='pt-3'>
-                <Col xs={4} className='pt-2'>
-                  Camera Poses:
-                </Col>
-                <Col>
-                  <Form.Control
-                    value={JSON.stringify(cameraPoses)}
-                    onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
-                  />
-                </Col>
-              </Row>
-              <Row>
-                <Col xs={4} className='pt-2'>
-                  To World Matrix:
-                </Col>
-                <Col>
-                  <Form.Control
-                    value={JSON.stringify(toWorldCoordsMatrix)}
-                    onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
-                  />
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
+          <div style={{height: "30px"}}></div>
         </Col>
       </Row>
     </Container>

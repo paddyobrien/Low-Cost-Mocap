@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { socket } from '../lib/socket';
-import { Button, Col, Overlay } from 'react-bootstrap';
+import { Button, Col, Container, Overlay, Row } from 'react-bootstrap';
 
 const isValidJson = (str: string) => {
     try {
@@ -12,9 +12,12 @@ const isValidJson = (str: string) => {
     return false;
 }
 
-export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPointsForPose }: { cameraPoses: any, setParsedCapturedPointsForPose: (newPoints: unknown) => void }) {
-    const target = useRef(null);
-    const [overlayVisible, setOverlayVisible] = useState(false);
+interface Props { 
+    cameraPoses: any,
+    setParsedCapturedPointsForPose: (newPoints: unknown) => void
+}
+
+export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPointsForPose }: Props) {
     const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
     const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
     useEffect(() => {
@@ -42,17 +45,9 @@ export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPo
 
     const countOfPointsForCameraPoseCalibration = isValidJson(`[${capturedPointsForPose.slice(0, -1)}]`) ? JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`).length : 0;
     return <>
-        <Button
-            size="sm"
-            className="me-3"
-            variant="outline-secondary"
-            ref={target}
-            onClick={() => setOverlayVisible(!overlayVisible)}
-        >Pose Calibration</Button>
-        <Overlay target={target.current} show={overlayVisible} placement="top" rootClose={true} onHide={() => setOverlayVisible(false)}>
-            <div className="overlay" style={{width: 600}}>
-                <div>{countOfPointsForCameraPoseCalibration} points collected</div>
-                <Button
+        <Container fluid={true}>
+            <Row>
+                <Col><Button
                     size='sm'
                     variant="outline-primary"
                     disabled={false}
@@ -60,8 +55,27 @@ export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPo
                         setCaptureNextPointForPose(true);
                     }
                     }>
-                    Capture
-                </Button>
+                    Capture point
+                </Button></Col>
+            </Row>
+            <Row>
+                <Col>
+                    <p>Pose calibration determines the translation and rotation of the cameras relative to each other. </p>
+                    <p>The calibration procedure is as follows:</p>
+                    <ol>
+                        <li>Turn on <em>one</em> light on the tracker object.</li>
+                        <li>Place the object in the scene where it can be seen by multiple cameras.</li>
+                        <li>Enable <em>Point detection</em></li>
+                        <li>Press the <em>Capture point</em> button. The captured point will be displayed on the camera feed. A green point indicates the point was visible to all cameras, a blue point was visible to n-1 cameras and a red point was visible to n-2 cameras.</li>
+                        <li>Repeat until at least 10-20 points are captured. Try to cover as much of the image as possible with points.</li>
+                        <li>Once happy with points, click on either "Full Pose" or "Bundle Adjustment". A full pose is necessary if you do not have an existing camera pose that is close to your camera arrangement. A bundle adjustment is preferred if there is an existing camera pose that is close.</li>
+                    </ol>
+                
+                </Col>
+            </Row>
+        </Container>
+                <div>{countOfPointsForCameraPoseCalibration} points collected</div>
+                
                 <Button
                     size='sm'
                     className=""
@@ -92,7 +106,5 @@ export default function CameraPoseCalibration({ cameraPoses, setParsedCapturedPo
                     }}>
                     Clear
                 </Button>
-            </div>
-        </Overlay>
-    </>
+                </>
 }

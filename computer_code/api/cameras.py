@@ -65,15 +65,6 @@ class Cameras:
     def end(self):
         self.cameras.end()
 
-    # TODO - Method deprecated, remove from frontend, rename capture_state to just state
-    def state(self):
-        return {
-            "is_processing_images": self.capture_state >= States.ImageProcessing,
-            "is_capturing_points": self.capture_state >= States.PointCapture,
-            "is_triangulating_points": self.capture_state >= States.Triangulation,
-            "is_locating_objects": self.capture_state >= States.ObjectDetection,
-        }
-
     def set_socketio(self, socketio):
         self.socketio = socketio
         self.socketio.emit("num-cams", self.num_cameras)

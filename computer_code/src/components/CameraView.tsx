@@ -24,18 +24,14 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
     })
     useSocketListener("num-cams", setNumCams)
     
-    const processingEnabled = mocapState >= States.ImageProcessing
+    const processingEnabled = mocapState >= States.ImageProcessing;
+    const pointCaptureEnabled = mocapState >= States.PointCapture;
+    const triangulationEnabled = mocapState >= States.Triangulation;
+
     return (
         <Container fluid={true}>
             <Row>
                 <Col>
-                    <Button
-                        size="sm"
-                        className="me-3"
-                        variant="outline-secondary"
-                        disabled={mocapState > States.ImageProcessing}
-                        onClick={() => changeState(mocapState === States.CamerasFound ? States.ImageProcessing : States.CamerasFound)}
-                    >{processingEnabled ? "Stop Image Processing": "Enable Image Processing"}</Button>
                     <CameraSettings />
                     <InfoTooltip disabled={mocapState === States.CamerasFound} message="Image processing must be disabled">
                         <Button
@@ -45,7 +41,7 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
                             onClick={() => changeState(States.SaveImage)}
                             disabled={mocapState !== States.CamerasFound}
                         >
-                        Capture frame
+                        📸 Capture frame
                         </Button>
                     </InfoTooltip>
                 </Col>
@@ -57,6 +53,31 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
                 <Col style={{ "position": "relative", paddingLeft: 10 }}>
                     <img src={`${BASEURL}`} />
                     <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />     
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <Button
+                        size="sm"
+                        className="mr-2"
+                        variant="outline-secondary"
+                        disabled={mocapState > States.ImageProcessing}
+                        onClick={() => changeState(mocapState === States.CamerasFound ? States.ImageProcessing : States.CamerasFound)}
+                    >{processingEnabled ? "⏹️ Stop Image Processing": "🎆 Enable Image Processing"}</Button>
+                    <Button
+                        size="sm"
+                        className="mr-2"
+                        variant="outline-secondary"
+                        disabled={mocapState < States.ImageProcessing || mocapState > States.PointCapture}
+                        onClick={() => changeState(mocapState === States.PointCapture ? States.ImageProcessing : States.PointCapture)}
+                    >{pointCaptureEnabled ? "⏹️ Stop Point Capture": "👉 Enable Point Capture"}</Button>
+                    <Button
+                        size="sm"
+                        className="mr-2"
+                        variant="outline-secondary"
+                        disabled={mocapState < States.PointCapture || mocapState > States.Triangulation}
+                        onClick={() => changeState(mocapState === States.PointCapture ? States.Triangulation : States.PointCapture)}
+                    >{triangulationEnabled ? "⏹️ Stop Triangulating": "◢ Enable Triangulation"}</Button>
                 </Col>
             </Row>
         </Container>

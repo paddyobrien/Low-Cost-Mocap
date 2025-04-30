@@ -62,7 +62,7 @@ def camera_stream():
 def camera_state():
     cameras = Cameras.instance()
 
-    return cameras.state()
+    return {"state": cameras.capture_state}
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):

@@ -18,7 +18,7 @@ export default function CameraSettings() {
     }
 
     return <>
-        <Button size="sm" className="me-3" variant="outline-secondary" ref={target} onClick={() => setOverlayVisible(!overlayVisible)}>Camera Settings</Button>
+        <Button size="sm" className="me-3" variant="outline-secondary" ref={target} onClick={() => setOverlayVisible(!overlayVisible)}>⚙️ Camera Settings</Button>
         <Overlay target={target.current} show={overlayVisible} rootClose={true} onHide={() => setOverlayVisible(false)} placement="bottom">
             <div className="overlay">
                 <Form onChange={updateCameraSettings} as={Col} className='ps-3'>

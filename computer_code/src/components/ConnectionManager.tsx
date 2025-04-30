@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { socket } from '../lib/socket';
-import Toast from 'react-bootstrap/Toast';
 import Modal from './Modal';
+import { States } from '../lib/states';
 
 async function getState() {
     const url = "http://localhost:3001/api/camera_state";
@@ -18,14 +18,7 @@ async function getState() {
     }
   }
 
-export interface State {
-    is_processing_images:boolean,
-    is_capturing_points: boolean,
-    is_triangulating_points: boolean,
-    is_locating_objects: boolean,
-}
-
-export default function ConnectionManager({updateState}:{updateState: (json: State) => void}) {
+export default function ConnectionManager({updateState}:{updateState: (s: States) => void}) {
     const [isConnected, setIsConnected] = useState(socket.connected);
     useEffect(() => {
         socket.on("disconnect", () => {
@@ -40,7 +33,7 @@ export default function ConnectionManager({updateState}:{updateState: (json: Sta
         socket.on("connect", async () => {
             setIsConnected(true);
             const json = await getState();
-            updateState(json as State);
+            updateState(json.state as States);
         });
         return () => {
             socket.off("connect")
