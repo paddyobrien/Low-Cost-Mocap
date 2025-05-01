@@ -38,7 +38,7 @@ export default function App() {
     }
     return defaultCameraPose
   });
-  console.log(cameraPoses)
+
   const [toWorldCoordsMatrix, setToWorldCoordsMatrix] = useState<number[][]>(() => {
     const saved = localStorage.getItem(LS_WORLD_KEY)
     if (saved) {

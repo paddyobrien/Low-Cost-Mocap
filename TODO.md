@@ -5,9 +5,7 @@
     - Really get a better model in the backend
     - Assign stable indexes to cameras
         - USB identified not exposed would need upstream changes in pseyepy
-    - Make point distance more explicit
-- Redesign front-end
-    - Cleaner separation of config time and capture time
-    - Channel for communicating status updates from backend
-    - Single file (zip) download format with file naming
-- Go another round with floor acquisition
+- Stop using socketio for request/response
+- Better config management
+- Sync exposure and gain
+- Expose intrinsics to ui

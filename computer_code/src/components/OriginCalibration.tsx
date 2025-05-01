@@ -3,7 +3,6 @@ import { Button, Col, Container, Row } from "react-bootstrap"
 import InfoTooltip from "./InfoTooltip"
 import { socket } from "../lib/socket"
 import { Modes } from "../lib/modes"
-import SmallHeader from "./SmallHeader"
 import useSocketListener from "../hooks/useSocketListener"
 
 interface Props {
@@ -13,11 +12,10 @@ interface Props {
     objectPoints: MutableRefObject<number[][][]>,
 }
 
-export default function OriginCalibration({mocapMode, toWorldCoordsMatrix, cameraPoses, objectPoints}: Props) {
+export default function OriginCalibration({mocapMode, toWorldCoordsMatrix}: Props) {
     const [captureNextPoint, setCaptureNextPoint] = useState(false)
     useSocketListener("object-points", (data) => {
         if (captureNextPoint) {
-            debugger;
             socket.emit("set-origin", { objectPoint: data["object_points"][0], toWorldCoordsMatrix })
             setCaptureNextPoint(false)
         }

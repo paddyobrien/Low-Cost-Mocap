@@ -66,69 +66,6 @@ def camera_state():
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):
-    # @socketio.on("acquire-floor")
-# def acquire_floor(data):
-    # mocapSystem = MocapSystem.instance()
-    # object_points = data["objectPoints"]
-    # object_points = np.array([item for sublist in object_points for item in sublist])
-
-    # tmp_A = []
-    # tmp_b = []
-    # for i in range(len(object_points)):
-    #     tmp_A.append([object_points[i, 0], object_points[i, 1], 1])
-    #     tmp_b.append(object_points[i, 2])
-    # b = np.matrix(tmp_b).T
-    # A = np.matrix(tmp_A)
-
-    # fit, residual, rnk, s = linalg.lstsq(A, b)
-    # fit = fit.T[0]
-
-    # plane_normal = np.array([[fit[0]], [fit[1]], [-1]])
-    # plane_normal = plane_normal / linalg.norm(plane_normal)
-    # up_normal = np.array([[0], [1], [0]], dtype=np.float32)
-
-    # plane = np.array([fit[0], fit[1], -1, fit[2]])
-
-    # # https://math.stackexchange.com/a/897677/1012327
-    # G = np.array(
-    #     [
-    #         [
-    #             np.dot(plane_normal.T, up_normal)[0][0],
-    #             -linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
-    #             0,
-    #         ],
-    #         [
-    #             linalg.norm(np.cross(plane_normal.T[0], up_normal.T[0])),
-    #             np.dot(plane_normal.T, up_normal)[0][0],
-    #             0,
-    #         ],
-    #         [0, 0, 1],
-    #     ]
-    # )
-    # F = np.array(
-    #     [
-    #         plane_normal.T[0],
-    #         (
-    #             (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
-    #             / linalg.norm(
-    #                 (up_normal - np.dot(plane_normal.T, up_normal)[0][0] * plane_normal)
-    #             )
-    #         ).T[0],
-    #         np.cross(up_normal.T[0], plane_normal.T[0]),
-    #     ]
-    # ).T
-    # R = F @ G @ linalg.inv(F)
-
-    # R = R @ [[1, 0, 0], [0, -1, 0], [0, 0, 1]]  # i dont fucking know why
-
-    # MocapSystem.to_world_coords_matrix = np.array(
-    #     np.vstack((np.c_[R, [0, 0, 0]], [[0, 0, 0, 1]]))
-    # )
-
-    # socketio.emit(
-    #     "to-world-coords-matrix",
-    #     {"to_world_coords_matrix": MocapSystem.to_world_coords_matrix.tolist()},
-    # )
     mocapSystem = MocapSystem.instance()
     object_points = np.array([item for sublist in data["objectPoints"] for item in sublist])
     
@@ -136,7 +73,7 @@ def acquire_floor(data):
     centroid = np.mean(object_points, axis=0)
     points_centered = object_points - centroid
     U, s, Vh = np.linalg.svd(points_centered)
-    a, b, c = Vh[2, :]  # Raw floor normal ([0.0076, -0.0565, 0.9983])
+    a, b, c = Vh[2, :]  
     current_normal = np.array([a, b, c])
     if current_normal[2] < 0:
         current_normal *= -1  # Ensure Z points up
@@ -327,11 +264,6 @@ def set_to_world_matrix(data):
 def change_mocap_mode(data):
     mocapSystem = MocapSystem.instance()
     mocapSystem.change_mode(data)
-
-@socketio.on("capture_image")
-def capture_image():
-    mocapSystem = MocapSystem.instance()
-    mocapSystem.save_image()
 
 @socketio.on("determine-scale")
 def determine_scale(data):
