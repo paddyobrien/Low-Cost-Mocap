@@ -267,7 +267,7 @@ class MocapSystem:
         valid_source_modes = Transitions[target_mode]
         if self.capture_mode in valid_source_modes:
             self.capture_mode = target_mode
-            self.socketio.emit("mode_change", self.capture_mode)
+            self.socketio.emit("mode-change", self.capture_mode)
             return
         else:
-            self.socketio.emit("mode_change_failure", "Mode change failed, cannot go from \"{readable_modes[self.capture_mode]}\" to \"{readable_modes[self.target_mode]}\"" )
+            self.socketio.emit("mode-change-failure", "Mode change failed, cannot go from \"{readable_modes[self.capture_mode]}\" to \"{readable_modes[self.target_mode]}\"" )

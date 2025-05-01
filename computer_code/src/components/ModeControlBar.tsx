@@ -21,8 +21,8 @@ export default function ModeControlBar({mocapMode, setMocapMode} : Props) {
   
     const toggleShowError = () => setShowError(!showError);
 
-    useSocketListener("state_change", setMocapMode);
-    useSocketListener("mode_change_failure", setErrorMessage)
+    useSocketListener("mode-change", setMocapMode);
+    useSocketListener("mode-change-failure", setErrorMessage)
 
     return (
         <>

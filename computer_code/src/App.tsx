@@ -81,7 +81,7 @@ export default function App() {
       setToWorldCoordsMatrix(data.to_world_coords_matrix)
     }
   }, [cameraPoses, toWorldCoordsMatrix]);
-  console.log(hasCameraPose)
+
   return (
     <Container fluid>
       <Logo />

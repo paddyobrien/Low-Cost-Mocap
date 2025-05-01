@@ -33,7 +33,6 @@ export default function ConnectionManager({updateState}:{updateState: (s: Modes)
         socket.on("connect", async () => {
             setIsConnected(true);
             const json = await getState();
-            console.log(json)
             updateState(json);
         });
         return () => {
