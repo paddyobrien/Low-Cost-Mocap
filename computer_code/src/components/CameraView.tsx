@@ -14,19 +14,21 @@ interface Props {
     parsedCapturedPointsForPose: any
 }
 
+function randString() {
+    return Math.random().toString(36).slice(2)
+}
+
 export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Props) {
     const [fps, setFps] = useState(0);
     const [numCams, setNumCams] = useState(0);
-    const [refreshingImage, setRefreshingImage] = useState(false);
+    // A random image suffix to cache bust
+    const [imageSuffix, setImageSuffix] = useState(randString());
     useSocketListener("fps", data => {
         setFps([data["fps"]])
     })
     useSocketListener("num-cams", setNumCams)
     const refreshImage = useCallback(() => {
-        setRefreshingImage(true);
-        setTimeout(() => {
-            setRefreshingImage(false)
-        }, 500)
+        setImageSuffix(randString());
     }, [])
     
     return (
@@ -62,9 +64,10 @@ export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Pro
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>
                 <Col style={{ "position": "relative", paddingLeft: 10 }}>
                     {mocapMode > Modes.CamerasNotFound ? 
-                            !refreshingImage &&
-                            <><img src={`${BASEURL}`} /><PosePoints numCams={numCams} points={parsedCapturedPointsForPose} /></> 
-                        
+                        <>
+                            <img src={`${BASEURL}/${imageSuffix}`} />
+                            <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />
+                        </> 
                         : 
                         <div className="centered" style={{height: "300px", color: "#dc3545"}}>No cameras found!</div> }
                       

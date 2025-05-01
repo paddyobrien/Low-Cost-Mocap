@@ -13,9 +13,11 @@ interface Props {
     cameraPoses: any,
     toWorldCoordsMatrix: any,
     objectPoints: MutableRefObject<number[][][]>,
+    lastObjectPointTimestamp: number,
     setCameraPoses: (s: any) => void,
     setToWorldCoordsMatrix: (s: any) => void
     setParsedCapturedPointsForPose: (s: Array<Array<Array<number>>>) => void
+    setLastObjectPointTimestamp: (s: any) => void
 }
 
 export default function Configure({
@@ -23,9 +25,11 @@ export default function Configure({
     cameraPoses,
     toWorldCoordsMatrix,
     objectPoints,
+    lastObjectPointTimestamp,
     setCameraPoses,
     setToWorldCoordsMatrix,
     setParsedCapturedPointsForPose,
+    setLastObjectPointTimestamp
 }: Props) {
     const isTriangulatingPoints = mocapMode >= Modes.Triangulation;
     return (
@@ -66,6 +70,9 @@ export default function Configure({
                                 mocapMode={mocapMode}
                                 cameraPoses={cameraPoses}
                                 objectPoints={objectPoints}
+                                lastObjectPointTimestamp={lastObjectPointTimestamp}
+                                setLastObjectPointTimestamp={setLastObjectPointTimestamp}
+                                setCameraPoses={setCameraPoses}
                             />
                         </Tab>
                         <Tab eventKey="align" title="→ Align">

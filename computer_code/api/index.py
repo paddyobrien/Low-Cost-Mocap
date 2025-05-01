@@ -21,8 +21,8 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-@app.route("/api/camera-stream")
-def camera_stream():
+@app.route("/api/camera-stream/<random>")
+def camera_stream(random):
     camera = request.args.get("camera")
     if camera is None:
         print("is none")
@@ -334,29 +334,29 @@ def capture_image():
 @socketio.on("determine-scale")
 def determine_scale(data):
     object_points = data["objectPoints"]
+    real_distance = 0.119
     mocapSystem = MocapSystem.instance()
     camera_poses = mocapSystem.camera_poses
-    actual_distance = 0.119
-    observed_distances = []
 
+    observed_distances = []
+    print(object_points)
     for object_points_i in object_points:
         if len(object_points_i) != 2:
             continue
-
         object_points_i = np.array(object_points_i)
 
         observed_distances.append(
             np.sqrt(np.sum((object_points_i[0] - object_points_i[1]) ** 2))
         )
-    scale_factor = actual_distance / np.mean(observed_distances)
-    print("Scaling")
-    print(scale_factor)
-    print("-----")
+    if len(observed_distances) == 0:
+        socketio.emit("scale-error", {"message": "Did not find valid points"})
+        return    
+    scale_factor = real_distance / np.mean(observed_distances)
     
     for i in range(0, len(camera_poses)):
         camera_poses[i]["t"] = (np.array(camera_poses[i]["t"]) * scale_factor).tolist()
     mocapSystem.set_camera_poses(camera_poses)
-    socketio.emit("camera-pose", {"error": None, "camera_poses": camera_poses})
+    socketio.emit("scaled", {"scale_factor": scale_factor, "camera_poses": camera_poses})
 
 
 if __name__ == "__main__":

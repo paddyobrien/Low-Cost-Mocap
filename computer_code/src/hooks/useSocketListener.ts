@@ -13,5 +13,5 @@ export default function useSocketListener(eventName, handler) {
         return () => {
             socket.off(eventName, handler)
         }
-    }, [])
+    }, [handler, eventName])
 }

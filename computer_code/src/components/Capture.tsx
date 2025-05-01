@@ -1,11 +1,11 @@
 import { Button, Col, Container, Form, Row } from "react-bootstrap";
-import DownloadControls from "./DownloadControls";
 import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { Modes } from "../lib/modes";
 import { socket } from "../lib/socket";
 import SmallHeader from "./SmallHeader";
 import InfoTooltip from "./InfoTooltip";
-import JSZip from "JSZip"
+
+import { createZipFile } from "../lib/download";
 
 interface Props {
     mocapMode: Modes,
@@ -14,17 +14,6 @@ interface Props {
     lastObjectPointTimestamp: any,
 }
 
-function saveAs(blob, name) {
-    const link = document.createElement('a');
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    const objectURL = URL.createObjectURL(blob);
-
-    link.href = objectURL;
-    link.href = URL.createObjectURL(blob);
-    link.download = `${name}.zip`;
-    link.click();
-}
 
 export default function Capture({mocapMode, objectPoints, objectPointErrors, lastObjectPointTimestamp}: Props) {
     const [currentCaptureName, setCurrentCaptureName] = useState("");
@@ -50,11 +39,13 @@ export default function Capture({mocapMode, objectPoints, objectPointErrors, las
     const canRecord = mocapMode === Modes.Triangulation && currentCaptureName !== "";
 
     const stopRecording = useCallback(() => {
-        const zip = new JSZip();
-        zip.file(`${currentCaptureName}/hello.txt`, "Hello[p my)6cxsw2q");
-        zip.generateAsync({type:"blob"}).then(function (blob) { // 1) generate the zip file
-            saveAs(blob, currentCaptureName);                          // 2) trigger the download
-        })
+        createZipFile(
+            currentCaptureName, 
+            objectPointTimes.current, 
+            objectPoints.current, 
+            objectPointErrors.current, 
+            imagePoints.current
+        )
         setIsRecording(false)
     }, [currentCaptureName, isRecording])
 

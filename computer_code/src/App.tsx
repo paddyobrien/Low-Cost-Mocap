@@ -14,6 +14,7 @@ import Configure from './components/Configure';
 import Capture from './components/Capture';
 import Logo from './components/Logo';
 import ModeControlBar from './components/ModeControlBar';
+import useSocketListener from './hooks/useSocketListener';
 
 export default function App() {
   const [mocapMode, setMocapMode] = useState(Modes.ImageProcessing);
@@ -30,15 +31,9 @@ export default function App() {
   const [cameraPoses, setCameraPoses] = useState<Array<object>>(defaultCameraPose);
   const [toWorldCoordsMatrix, setToWorldCoordsMatrix] = useState<number[][]>(defaultWorldMatrix)
 
-  useEffect(() => {
-      const recordTime = (data) => {
-        setLastObjectPointTimestamp(data["time_ms"])
-      }
-      socket.on("object-points", recordTime)
-      return () => {
-          socket.off("object-points", recordTime)
-      }
-  }, [])
+  useSocketListener("object-points",  (data) => {
+    setLastObjectPointTimestamp(data["time_ms"])
+  })
 
   useEffect(() => {
     socket.on("to-world-coords-matrix", (data) => {
@@ -122,9 +117,11 @@ export default function App() {
                   cameraPoses={cameraPoses}
                   toWorldCoordsMatrix={toWorldCoordsMatrix}
                   objectPoints={objectPoints}
+                  lastObjectPointTimestamp={lastObjectPointTimestamp}
                   setCameraPoses={setCameraPoses}
                   setToWorldCoordsMatrix={setToWorldCoordsMatrix}
                   setParsedCapturedPointsForPose={setParsedCapturedPointsForPose}
+                  setLastObjectPointTimestamp={setLastObjectPointTimestamp}
                 />
               </Tab>
             </Tabs>

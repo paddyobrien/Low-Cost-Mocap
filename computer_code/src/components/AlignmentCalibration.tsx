@@ -15,12 +15,10 @@ interface Props {
 export default function AlignmentCalibration({mocapMode, cameraPoses, toWorldCoordsMatrix, objectPoints}: Props) {
     const [captureNextPoint, setCaptureNextPoint] = useState(false)
     useEffect(() => {
-        objectPoints.current = [];
-    })
-    useEffect(() => {
         socket.on("object-points", (data) => {
             if (captureNextPoint) {
                 objectPoints.current.push(data["object_points"])
+                setCaptureNextPoint(false);
             }
         })
     

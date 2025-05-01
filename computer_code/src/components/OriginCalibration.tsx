@@ -16,7 +16,7 @@ export default function OriginCalibration({mocapMode, toWorldCoordsMatrix, camer
     const [captureNextPoint, setCaptureNextPoint] = useState(false)
     useEffect(() => {
         objectPoints.current = [];
-    })
+    }, [])
     useEffect(() => {
         socket.on("object-points", (data) => {
             if (captureNextPoint) {

@@ -120,7 +120,7 @@ class MocapSystem:
             image_points = self._point_capture(frames)
 
         if self.capture_mode >= Modes.Triangulation:
-            errors, object_points, frames = self._triangulation(frames, image_points)
+            object_points, errors, frames = self._triangulation(frames, image_points)
 
         if self.capture_mode >= Modes.ObjectDetection:
             objects, filtered_objects = self._object_detection(object_points, errors)
@@ -240,28 +240,26 @@ class MocapSystem:
         return objects, filtered_objects
 
     def _emit_data(self, time, image_points, object_points, errors, objects, filtered_objects):
-        # TODO - Use only one message, front end can figure out shape based on capture mode
-        if any(np.all(point[0] != [None, None]) for point in image_points):
-            if self.capture_mode == Modes.PointCapture:
-                self.socketio.emit("image-points", [x[0] for x in image_points])
-            elif self.capture_mode >= Modes.Triangulation:
-                self.socketio.emit(
-                    "object-points",
-                    {
-                        "object_points": object_points.tolist(),
-                        "time_ms": time, 
-                        "image_points": image_points,
-                        "errors": errors.tolist(),
-                        "objects": [
-                            {
-                                k: (v.tolist() if isinstance(v, np.ndarray) else v)
-                                for (k, v) in object.items()
-                            }
-                            for object in objects
-                        ],
-                        "filtered_objects": filtered_objects,
-                    },
-                )
+        if self.capture_mode == Modes.PointCapture:
+            self.socketio.emit("image-points", [x[0] for x in image_points])
+        elif self.capture_mode >= Modes.Triangulation:
+            self.socketio.emit(
+                "object-points",
+                {
+                    "object_points": object_points.tolist(),
+                    "time_ms": time, 
+                    "image_points": image_points,
+                    "errors": errors.tolist(),
+                    "objects": [
+                        {
+                            k: (v.tolist() if isinstance(v, np.ndarray) else v)
+                            for (k, v) in object.items()
+                        }
+                        for object in objects
+                    ],
+                    "filtered_objects": filtered_objects,
+                },
+            )
 
     def change_mode(self, target_mode):
         valid_source_modes = Transitions[target_mode]

@@ -57,7 +57,6 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
     useSocketListener("camera-pose", (data) => {
         setIsCalculatingPose(false);
         setShowPoseCalibrationResult(true);
-        console.log(data)
         setReprojectionError(data.error)
     });
 
@@ -105,22 +104,6 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
                     </pre>
                 </Col>
             </Row>
-            <Row>
-                <Col>
-                <details>
-                <summary>Calibration procedure</summary>
-                    <p>Use the following procedure to define the translation and rotation of the cameras relative to each other.</p>
-                    <ol>
-                        <li>Turn on <em>one</em> light on the tracker object.</li>
-                        <li>Place the object in the scene where it can be seen by multiple cameras.</li>
-                        <li>Enable <em>Point detection</em></li>
-                        <li>Press the <em>Record point</em> button. The captured point will be displayed on the camera feed. A green point indicates the point was visible to all cameras, a blue point was visible to n-1 cameras and a red point was visible to n-2 cameras.</li>
-                        <li>Repeat until at least 10-20 points are captured. Try to cover as much of the image as possible with points.</li>
-                        <li>Once happy with points, click on either "Full Pose" or "Bundle Adjustment". A full pose is necessary if you do not have an existing camera pose that is close to your camera arrangement. A bundle adjustment is preferred if there is an existing camera pose that is close.</li>
-                    </ol>
-                    </details>
-                </Col>
-            </Row>
             <Row className="mt-2">
                 <Col>
                     <Button
@@ -144,6 +127,22 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
                         Bundle Adjustment
                     </Button>
                     {isCalculatingPose && <span>Calculating...</span>}
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                <details>
+                <summary>Calibration procedure</summary>
+                    <p>Use the following procedure to define the translation and rotation of the cameras relative to each other.</p>
+                    <ol>
+                        <li>Turn on <em>one</em> light on the tracker object.</li>
+                        <li>Place the object in the scene where it can be seen by multiple cameras.</li>
+                        <li>Enable <em>Point detection</em></li>
+                        <li>Press the <em>Record point</em> button. The captured point will be displayed on the camera feed. A green point indicates the point was visible to all cameras, a blue point was visible to n-1 cameras and a red point was visible to n-2 cameras.</li>
+                        <li>Repeat until at least 10-20 points are captured. Try to cover as much of the image as possible with points.</li>
+                        <li>Once happy with points, click on either "Full Pose" or "Bundle Adjustment". A full pose is necessary if you do not have an existing camera pose that is close to your camera arrangement. A bundle adjustment is preferred if there is an existing camera pose that is close.</li>
+                    </ol>
+                    </details>
                 </Col>
             </Row>
             <ToastContainer position="bottom-center">

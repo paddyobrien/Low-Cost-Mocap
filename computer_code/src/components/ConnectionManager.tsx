@@ -19,25 +19,39 @@ async function getState() {
   }
 
 export default function ConnectionManager({updateState}:{updateState: (s: Modes) => void}) {
-    const [isConnected, setIsConnected] = useState(socket.connected);
+    const [isConnected, setIsConnected] = useState(socket.active);
     useEffect(() => {
-        socket.on("disconnect", () => {
+        const f = () => {
+            console.log("disconnect")
             setIsConnected(false)
-        });
+        };
+        socket.on("disconnect", f) 
         return () => {
-            socket.off("disconnect")
+            console.log("exit disconnect")
+            socket.off("disconnect", f)
         }
     }, [])
 
     useEffect(() => {
-        socket.on("connect", async () => {
+        const f = async () => {
+            console.log("connect")
             setIsConnected(true);
             const json = await getState();
             updateState(json);
-        });
-        return () => {
-            socket.off("connect")
         }
+        socket.on("connect", f);
+        return () => {
+            console.log("exit connect")
+            socket.off("connect", f)
+        }
+    }, [])
+
+    useEffect(() => {
+        const f = async () => {
+            const json = await getState();
+            updateState(json);
+        }
+        f()
     }, [])
 
     if (isConnected) {
