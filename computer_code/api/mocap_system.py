@@ -1,5 +1,4 @@
 import os
-import time
 import uuid
 import numpy as np
 import cv2 as cv
@@ -14,7 +13,10 @@ from helpers import (
 )
 
 DEFAULT_FPS = 125
-class States():
+
+# This enum is also defined in modes.ts in the front end, keep them in sync
+class Modes():
+    Initializing = -1,
     CamerasNotFound = 0
     CamerasFound = 1
     SaveImage = 2
@@ -23,12 +25,32 @@ class States():
     Triangulation = 5
     ObjectDetection = 6
 
+readable_modes = {
+    Modes.Initializing: "Initializing",
+    Modes.CamerasNotFound: "Cameras not found",
+    Modes.SaveImage: "Save image",
+    Modes.ImageProcessing: "Processing images",
+    Modes.PointCapture: "Capturing points",
+    Modes.Triangulation: "Triangulating",
+    Modes.ObjectDetection: "Detecting objects"
+}
+
+Transitions = {
+    Modes.SaveImage: [Modes.CamerasFound],
+    Modes.CamerasFound: [Modes.ImageProcessing, Modes.SaveImage],
+    Modes.ImageProcessing: [Modes.CamerasFound, Modes.PointCapture],
+    Modes.PointCapture: [Modes.ImageProcessing, Modes.Triangulation],
+    Modes.Triangulation: [Modes.PointCapture, Modes.ObjectDetection],
+    Modes.ObjectDetection: [Modes.Triangulation],
+}
 @Singleton
-class Cameras:
+class MocapSystem:
     def __init__(self):
         self.camera_poses = None
         self.projection_matrices = None
         self.to_world_coords_matrix = None
+        self.capture_mode = Modes.Initializing
+        self.num_cams = 0
 
         self.kalman_filter = KalmanFilter(1)
         self.socketio = None
@@ -38,33 +60,33 @@ class Cameras:
         print("\nInitializing cameras")
         try:
             self.cameras = Camera(
-                fps=target_fps, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=100
+                fps=target_fps, resolution=Camera.RES_SMALL, colour=True, gain=1, exposure=50
             )
-            self.capture_state = States.ImageProcessing
+            self.capture_mode = Modes.ImageProcessing
         except:
-            self.capture_state = States.CamerasNotFound
+            self.capture_mode = Modes.CamerasNotFound
 
-        if self.capture_state >= States.CamerasFound:
-            print(f"{cam_count()} cameras found")
+        if self.capture_mode >= Modes.CamerasFound:
+            self.num_cameras = cam_count()
+            print(f"{self.num_cameras} cameras found")
         else:
-            self.num_cameras = 0
             print(f"Failed to find cameras, please check connections")
 
     def end(self):
         self.cameras.end()
 
-    # TODO - Method deprecated, remove from frontend, rename capture_state to just state
-    def state(self):
-        return {
-            "is_processing_images": self.capture_state >= States.ImageProcessing,
-            "is_capturing_points": self.capture_state >= States.PointCapture,
-            "is_triangulating_points": self.capture_state >= States.Triangulation,
-            "is_locating_objects": self.capture_state >= States.ObjectDetection,
-        }
-
     def set_socketio(self, socketio):
         self.socketio = socketio
         self.socketio.emit("num-cams", self.num_cameras)
+
+    def state(self):
+        return {
+            "mode": self.capture_mode, 
+            "camera_poses": self.camera_poses,
+            "to_world_coords_matrix": self.to_world_coords_matrix,
+            "exposure": self.cameras.exposure,
+            "gain": self.cameras.gain
+        }
 
     def set_camera_poses(self, poses):
         self.camera_poses = poses
@@ -87,20 +109,20 @@ class Cameras:
         objects = []
         filtered_objects = []
 
-        if self.capture_state == States.SaveImage:
+        if self.capture_mode == Modes.SaveImage:
             self._capture_image(frames)
-            self.exit_save_image()
+            self.change_mode(Modes.CamerasFound)
 
-        if self.capture_state >= States.ImageProcessing:
+        if self.capture_mode >= Modes.ImageProcessing:
             frames = self._image_processing(frames)
         
-        if self.capture_state >= States.PointCapture:
+        if self.capture_mode >= Modes.PointCapture:
             image_points = self._point_capture(frames)
 
-        if self.capture_state >= States.Triangulation:
-            errors, object_points, frames = self._triangulation(frames, image_points)
+        if self.capture_mode >= Modes.Triangulation:
+            object_points, errors, frames = self._triangulation(frames, image_points)
 
-        if self.capture_state >= States.ObjectDetection:
+        if self.capture_mode >= Modes.ObjectDetection:
             objects, filtered_objects = self._object_detection(object_points, errors)
 
         average_time = np.mean(timestamps)
@@ -108,13 +130,13 @@ class Cameras:
         return frames
 
     def get_frames(self, camera=None):
-        if self.capture_state >= States.CamerasFound:
+        if self.capture_mode >= Modes.CamerasFound:
             frames = self._camera_read()
             if camera == None:
                 return np.hstack(frames)
             return frames[camera]
         else:
-            raise RuntimeError("Cannot get frames state is {self.capture_state}, should be greater than {States.CameraFound}")
+            raise RuntimeError("Cannot get frames mode is {self.capture_mode}, should be greater than {Modes.CameraFound}")
 
     def _capture_image(self, frames):
         for i in range(0, self.num_cameras):
@@ -218,70 +240,32 @@ class Cameras:
         return objects, filtered_objects
 
     def _emit_data(self, time, image_points, object_points, errors, objects, filtered_objects):
-        # TODO - Use only one message, front end can figure out shape based on capture state
-        if any(np.all(point[0] != [None, None]) for point in image_points):
-            if self.capture_state == States.PointCapture:
-                self.socketio.emit("image-points", [x[0] for x in image_points])
-            elif self.capture_state >= States.Triangulation:
-                self.socketio.emit(
-                    "object-points",
-                    {
-                        "object_points": object_points.tolist(),
-                        "time_ms": time, 
-                        "image_points": image_points,
-                        "errors": errors.tolist(),
-                        "objects": [
-                            {
-                                k: (v.tolist() if isinstance(v, np.ndarray) else v)
-                                for (k, v) in object.items()
-                            }
-                            for object in objects
-                        ],
-                        "filtered_objects": filtered_objects,
-                    },
-                )
+        if self.capture_mode == Modes.PointCapture:
+            self.socketio.emit("image-points", [x[0] for x in image_points])
+        elif self.capture_mode >= Modes.Triangulation:
+            self.socketio.emit(
+                "object-points",
+                {
+                    "object_points": object_points.tolist(),
+                    "time_ms": time, 
+                    "image_points": image_points,
+                    "errors": errors.tolist(),
+                    "objects": [
+                        {
+                            k: (v.tolist() if isinstance(v, np.ndarray) else v)
+                            for (k, v) in object.items()
+                        }
+                        for object in objects
+                    ],
+                    "filtered_objects": filtered_objects,
+                },
+            )
 
-    # State change functions 
-    def save_image(self):
-        self._state_change(States.SaveImage, [States.CamerasFound])
-    
-    def exit_save_image(self):
-        self._state_change(States.CamerasFound, [States.SaveImage])
-
-    def start_image_processing(self):
-        self._state_change(States.ImageProcessing, [States.CamerasFound])
-    
-    def stop_image_processing(self):
-        self._state_change(States.CamerasFound, [States.ImageProcessing])
-
-    def start_capturing_points(self):
-        self._state_change(States.PointCapture, [States.ImageProcessing])
-
-    def stop_capturing_points(self):
-        self._state_change(States.ImageProcessing, [States.PointCapture])
-
-    def start_triangulating_points(self, camera_poses):
-        self.camera_poses = camera_poses
-        self._state_change(States.Triangulation, [States.PointCapture])
-        
-    def stop_triangulating_points(self):
-        self._state_change(States.PointCapture, [States.Triangulation])
-        self.camera_poses = None
-
-    def start_object_detection(self):
-        self._state_change(States.ObjectDetection, [States.Triangulation])
-    
-    def stop_object_detection(self):
-        self._state_change(States.Triangulation, [States.ObjectDetection])
-
-    def start_locating_objects(self):
-        self.is_locating_objects = True
-
-    def stop_locating_objects(self):
-        self.is_locating_objects = False
-
-    def _state_change(self, target_state, valid_source_states):
-        if self.capture_state in valid_source_states:
-            self.capture_state = target_state
+    def change_mode(self, target_mode):
+        valid_source_modes = Transitions[target_mode]
+        if self.capture_mode in valid_source_modes:
+            self.capture_mode = target_mode
+            self.socketio.emit("mode-change", self.capture_mode)
             return
-        raise RuntimeError(f"Change failed, cannot go from {self.capture_state} to {target_state}")
+        else:
+            self.socketio.emit("mode-change-failure", "Mode change failed, cannot go from \"{readable_modes[self.capture_mode]}\" to \"{readable_modes[self.target_mode]}\"" )

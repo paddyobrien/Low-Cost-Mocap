@@ -1,6 +1,6 @@
 import { MutableRefObject, useEffect, useRef } from "react";
 import { ArrowHelper, BufferAttribute, BufferGeometry, Color, EdgesGeometry, InstancedMesh, LineBasicMaterial, Material, Matrix4, NormalBufferAttributes, Object3D, Vector3 } from "three";
-import { numberToHexColor } from "../shared/styles/scripts/helpers";
+import { numberToHexColor } from "../lib/helpers";
 
 export default function Objects({filteredObjectsRef, count}: {filteredObjectsRef: MutableRefObject<Object[]>, count: number}) {
   let objects = filteredObjectsRef.current.flat()

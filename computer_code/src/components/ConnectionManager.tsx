@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { socket } from '../shared/styles/scripts/socket';
-import Toast from 'react-bootstrap/Toast';
+import { socket } from '../lib/socket';
 import Modal from './Modal';
+import { Modes } from '../lib/modes';
 
 async function getState() {
     const url = "http://localhost:3001/api/camera_state";
@@ -18,33 +18,40 @@ async function getState() {
     }
   }
 
-export interface State {
-    is_processing_images:boolean,
-    is_capturing_points: boolean,
-    is_triangulating_points: boolean,
-    is_locating_objects: boolean,
-}
-
-export default function ConnectionManager({updateState}:{updateState: (json: State) => void}) {
-    const [isConnected, setIsConnected] = useState(socket.connected);
+export default function ConnectionManager({updateState}:{updateState: (s: Modes) => void}) {
+    const [isConnected, setIsConnected] = useState(socket.active);
     useEffect(() => {
-        socket.on("disconnect", () => {
+        const f = () => {
+            console.log("disconnect")
             setIsConnected(false)
-        });
+        };
+        socket.on("disconnect", f) 
         return () => {
-            socket.off("disconnect")
+            console.log("exit disconnect")
+            socket.off("disconnect", f)
         }
     }, [])
 
     useEffect(() => {
-        socket.on("connect", async () => {
+        const f = async () => {
+            console.log("connect")
             setIsConnected(true);
             const json = await getState();
-            updateState(json as State);
-        });
-        return () => {
-            socket.off("connect")
+            updateState(json);
         }
+        socket.on("connect", f);
+        return () => {
+            console.log("exit connect")
+            socket.off("connect", f)
+        }
+    }, [])
+
+    useEffect(() => {
+        const f = async () => {
+            const json = await getState();
+            updateState(json);
+        }
+        f()
     }, [])
 
     if (isConnected) {
