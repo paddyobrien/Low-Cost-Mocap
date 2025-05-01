@@ -1,14 +1,14 @@
 import { Button, Col, Container, Form, Row } from "react-bootstrap";
 import DownloadControls from "./DownloadControls";
 import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
-import { States } from "../lib/states";
+import { Modes } from "../lib/modes";
 import { socket } from "../lib/socket";
 import SmallHeader from "./SmallHeader";
 import InfoTooltip from "./InfoTooltip";
 import JSZip from "JSZip"
 
 interface Props {
-    mocapState: States,
+    mocapMode: Modes,
     objectPoints: MutableRefObject<number[][][]>
     objectPointErrors: any,
     lastObjectPointTimestamp: any,
@@ -26,7 +26,7 @@ function saveAs(blob, name) {
     link.click();
 }
 
-export default function Capture({mocapState, objectPoints, objectPointErrors, lastObjectPointTimestamp}: Props) {
+export default function Capture({mocapMode, objectPoints, objectPointErrors, lastObjectPointTimestamp}: Props) {
     const [currentCaptureName, setCurrentCaptureName] = useState("");
     const objectPointTimes = useRef<Array<Array<Array<number>>>>([]);
     const imagePoints = useRef<Array<Array<number>>>([])
@@ -47,7 +47,7 @@ export default function Capture({mocapState, objectPoints, objectPointErrors, la
         }
     }, [objectPoints, isRecording])
 
-    const canRecord = mocapState === States.Triangulation && currentCaptureName !== "";
+    const canRecord = mocapMode === Modes.Triangulation && currentCaptureName !== "";
 
     const stopRecording = useCallback(() => {
         const zip = new JSZip();

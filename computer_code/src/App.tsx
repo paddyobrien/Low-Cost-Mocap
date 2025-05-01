@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button, Card, Col, Container, Row } from 'react-bootstrap';
 import { Tooltip } from 'react-tooltip'
 import { socket } from './lib/socket';
@@ -11,14 +11,17 @@ import WorldView from './components/WorldView';
 import CameraView from './components/CameraView';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
-import { States } from './lib/states';
+import { Modes } from './lib/modes';
 import useSocketListener from './hooks/useSocketListener';
 import Configure from './components/Configure';
 import Capture from './components/Capture';
 import Logo from './components/Logo';
+import ModeControlBar from './components/ModeControlBar';
 
 export default function App() {
-  const [mocapState, setMocapState] = useState(States.ImageProcessing);
+  const [mocapMode, setMocapMode] = useState(Modes.ImageProcessing);
+  const [hasCameraPose, setHasCameraPose] = useState(false);
+  const [hasToWorldCoordsMatrix, setHasToWorldMatrix] = useState(false);
   const [parsedCapturedPointsForPose, setParsedCapturedPointsForPose] = useState<Array<Array<Array<number>>>>([]);
 
 
@@ -40,8 +43,6 @@ export default function App() {
       }
   }, [])
 
-  useSocketListener("state_change", setMocapState);
-
   useEffect(() => {
     socket.on("to-world-coords-matrix", (data) => {
       setToWorldCoordsMatrix(data["to_world_coords_matrix"])
@@ -54,6 +55,7 @@ export default function App() {
 
   useEffect(() => {
     socket.on("camera-pose", data => {
+      setHasCameraPose(true)
       setCameraPoses(data["camera_poses"])
     })
 
@@ -62,11 +64,30 @@ export default function App() {
     }
   }, [])
 
+  const stateUpdater = useCallback((data) => {
+    setMocapMode(data.mode)
+    if (!data.camera_poses) {
+      setHasCameraPose(false)
+      socket.emit("set-camera-poses", {cameraPoses})
+    } else {
+      setHasCameraPose(true)
+      setCameraPoses(data.camera_poses)
+    }
+    if (!data.to_world_coords_matrix) {
+      setHasToWorldMatrix(false)
+      socket.emit("set-to-world-matrix", {toWorldCoordsMatrix})
+    } else {
+      setHasToWorldMatrix(true)
+      setToWorldCoordsMatrix(data.to_world_coords_matrix)
+    }
+  }, [cameraPoses, toWorldCoordsMatrix]);
+  console.log(hasCameraPose)
   return (
     <Container fluid>
       <Logo />
-      <ConnectionManager updateState={setMocapState} />
-      <Row style={{marginTop: 55}}>
+      <ConnectionManager updateState={stateUpdater} />
+      <ModeControlBar mocapMode={mocapMode} setMocapMode={setMocapMode} />
+      <Row>
         <Col>
             <Tabs
               defaultActiveKey="cameraView"
@@ -74,7 +95,7 @@ export default function App() {
             > 
               <Tab eventKey="cameraView" title="🎥 Camera Feed">
                 <CameraView
-                    mocapState={mocapState}
+                    mocapMode={mocapMode}
                     parsedCapturedPointsForPose={parsedCapturedPointsForPose}
                   />
               </Tab>
@@ -95,11 +116,11 @@ export default function App() {
               id="uncontrolled-tab-example"
             > 
               <Tab eventKey="capture" title="⏺ Capture">
-                  <Capture mocapState={mocapState} objectPoints={objectPoints} objectPointErrors={objectPointErrors} lastObjectPointTimestamp={lastObjectPointTimestamp} />
+                  <Capture mocapMode={mocapMode} objectPoints={objectPoints} objectPointErrors={objectPointErrors} lastObjectPointTimestamp={lastObjectPointTimestamp} />
               </Tab>
               <Tab eventKey="configure" title="⚙️ Configure">
                 <Configure 
-                  mocapState={mocapState}
+                  mocapMode={mocapMode}
                   cameraPoses={cameraPoses}
                   toWorldCoordsMatrix={toWorldCoordsMatrix}
                   objectPoints={objectPoints}

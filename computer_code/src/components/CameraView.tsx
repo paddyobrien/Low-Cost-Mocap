@@ -2,21 +2,19 @@ import { Container, Badge, Button, Col, Row } from 'react-bootstrap';
 import PosePoints from "./PosePoints"
 import { useCallback, useState } from 'react';
 import useSocketListener from '../hooks/useSocketListener';
-import { States } from '../lib/states';
-import changeState from '../lib/changeState';
+import { Modes } from '../lib/modes';
+import changeMode from '../lib/changeMode';
 import CameraSettings from './CameraSettings';
 import InfoTooltip from './InfoTooltip';
 
 const BASEURL = "http://localhost:3001/api/camera-stream";
 
 interface Props {
-    mocapState: States,
+    mocapMode: Modes,
     parsedCapturedPointsForPose: any
 }
 
-const ALL_CAMS = "all"
-
-export default function CameraView({mocapState, parsedCapturedPointsForPose}: Props) {
+export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Props) {
     const [fps, setFps] = useState(0);
     const [numCams, setNumCams] = useState(0);
     useSocketListener("fps", data => {
@@ -24,22 +22,18 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
     })
     useSocketListener("num-cams", setNumCams)
     
-    const processingEnabled = mocapState >= States.ImageProcessing;
-    const pointCaptureEnabled = mocapState >= States.PointCapture;
-    const triangulationEnabled = mocapState >= States.Triangulation;
-
     return (
         <Container fluid={true} className="p-2 shadow-lg container-card">
             <Row>
                 <Col>
                     <CameraSettings />
-                    <InfoTooltip disabled={mocapState === States.CamerasFound} message="Image processing must be disabled">
+                    <InfoTooltip disabled={mocapMode === Modes.CamerasFound} message="Image processing must be disabled">
                         <Button
                             size="sm"
                             className="me-3"
                             variant="outline-secondary"
-                            onClick={() => changeState(States.SaveImage)}
-                            disabled={mocapState !== States.CamerasFound}
+                            onClick={() => changeMode(Modes.SaveImage)}
+                            disabled={mocapMode !== Modes.CamerasFound}
                         >
                         📸 Capture frame
                         </Button>
@@ -51,33 +45,11 @@ export default function CameraView({mocapState, parsedCapturedPointsForPose}: Pr
             </Row>
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>
                 <Col style={{ "position": "relative", paddingLeft: 10 }}>
-                    <img src={`${BASEURL}`} />
-                    <PosePoints numCams={numCams} points={parsedCapturedPointsForPose} />     
-                </Col>
-            </Row>
-            <Row>
-                <Col>
-                    <Button
-                        size="sm"
-                        className="mr-2"
-                        variant="outline-secondary"
-                        disabled={mocapState > States.ImageProcessing}
-                        onClick={() => changeState(mocapState === States.CamerasFound ? States.ImageProcessing : States.CamerasFound)}
-                    >{processingEnabled ? "⏹️ Stop Image Processing": "🎆 Enable Image Processing"}</Button>
-                    <Button
-                        size="sm"
-                        className="mr-2"
-                        variant="outline-secondary"
-                        disabled={mocapState < States.ImageProcessing || mocapState > States.PointCapture}
-                        onClick={() => changeState(mocapState === States.PointCapture ? States.ImageProcessing : States.PointCapture)}
-                    >{pointCaptureEnabled ? "⏹️ Stop Point Capture": "👉 Enable Point Capture"}</Button>
-                    <Button
-                        size="sm"
-                        className="mr-2"
-                        variant="outline-secondary"
-                        disabled={mocapState < States.PointCapture || mocapState > States.Triangulation}
-                        onClick={() => changeState(mocapState === States.PointCapture ? States.Triangulation : States.PointCapture)}
-                    >{triangulationEnabled ? "⏹️ Stop Triangulating": "◢ Enable Triangulation"}</Button>
+                    {mocapMode > Modes.CamerasNotFound ? 
+                        <><img src={`${BASEURL}`} /><PosePoints numCams={numCams} points={parsedCapturedPointsForPose} /></>
+                        : 
+                        <div className="centered" style={{height: "300px", color: "#dc3545"}}>No cameras found!</div> }
+                      
                 </Col>
             </Row>
         </Container>

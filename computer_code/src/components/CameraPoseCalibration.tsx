@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { socket } from '../lib/socket';
 import { Button, Col, Container, Overlay, Row } from 'react-bootstrap';
-import { States } from '../lib/states';
+import { Modes } from '../lib/modes';
 import InfoTooltip from './InfoTooltip';
 import useSocketListener from '../hooks/useSocketListener';
 import SmallHeader from './SmallHeader';
@@ -17,12 +17,12 @@ const isValidJson = (str: string) => {
 }
 
 interface Props { 
-    mocapState: States,
+    mocapMode: Modes,
     cameraPoses: any,
     setParsedCapturedPointsForPose: (newPoints: unknown) => void
 }
 
-export default function CameraPoseCalibration({ mocapState, cameraPoses, setParsedCapturedPointsForPose }: Props) {
+export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParsedCapturedPointsForPose }: Props) {
     const [isCalculatingPose, setIsCalculatingPose] = useState(false);
     const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
     const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
@@ -54,7 +54,7 @@ export default function CameraPoseCalibration({ mocapState, cameraPoses, setPars
 
     const parsedPoints = isValidJson(`[${capturedPointsForPose.slice(0, -1)}]`) ? JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`) : [];
     const countOfPointsForCameraPoseCalibration =  parsedPoints.length;
-    const pointCaptureAvailable = mocapState === States.PointCapture;
+    const pointCaptureAvailable = mocapMode === Modes.PointCapture;
 
     return <>
         <Container fluid={true} className="pb-4 container-card">

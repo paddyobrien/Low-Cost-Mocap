@@ -2,17 +2,17 @@ import { MutableRefObject, useEffect, useState } from "react"
 import { Button, Col, Container, Row } from "react-bootstrap"
 import InfoTooltip from "./InfoTooltip"
 import { socket } from "../lib/socket"
-import { States } from "../lib/states"
+import { Modes } from "../lib/modes"
 import SmallHeader from "./SmallHeader"
 
 interface Props {
-    mocapState: States,
+    mocapMode: Modes,
     cameraPoses: any,
     toWorldCoordsMatrix: any,
     objectPoints: MutableRefObject<number[][][]>,
 }
 
-export default function OriginCalibration({mocapState, toWorldCoordsMatrix, cameraPoses, objectPoints}: Props) {
+export default function OriginCalibration({mocapMode, toWorldCoordsMatrix, cameraPoses, objectPoints}: Props) {
     const [captureNextPoint, setCaptureNextPoint] = useState(false)
     useEffect(() => {
         objectPoints.current = [];
@@ -30,7 +30,7 @@ export default function OriginCalibration({mocapState, toWorldCoordsMatrix, came
           socket.off("object-points")
         }
       }, [captureNextPoint, toWorldCoordsMatrix])
-    const objectPointsEnabled = mocapState >= States.Triangulation
+    const objectPointsEnabled = mocapMode >= Modes.Triangulation
     const countOfPoints = objectPoints.current.length
     return (
         <Container fluid={true} className="container-card">

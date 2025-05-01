@@ -1,7 +1,7 @@
 import { Button, Col, Container, Form, Row, Tab, Tabs } from "react-bootstrap"
 import CameraPoseCalibration from "./CameraPoseCalibration"
 import { socket } from "../lib/socket"
-import { States } from "../lib/states"
+import { Modes } from "../lib/modes"
 import { MutableRefObject, useRef } from "react"
 import SmallHeader from "./SmallHeader"
 import ScaleCalibration from "./ScaleCalibration"
@@ -9,7 +9,7 @@ import AlignmentCalibration from "./AlignmentCalibration"
 import OriginCalibration from "./OriginCalibration"
 
 interface Props {
-    mocapState: States,
+    mocapMode: Modes,
     cameraPoses: any,
     toWorldCoordsMatrix: any,
     objectPoints: MutableRefObject<number[][][]>,
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function Configure({
-    mocapState,
+    mocapMode,
     cameraPoses,
     toWorldCoordsMatrix,
     objectPoints,
@@ -27,7 +27,7 @@ export default function Configure({
     setToWorldCoordsMatrix,
     setParsedCapturedPointsForPose,
 }: Props) {
-    const isTriangulatingPoints = mocapState >= States.Triangulation;
+    const isTriangulatingPoints = mocapMode >= Modes.Triangulation;
     return (
         <Container fluid={true} className="p-2 shadow-lg container-card">
             <Row>
@@ -56,21 +56,21 @@ export default function Configure({
                     >
                         <Tab eventKey="pose" title="📍Calibrate pose">
                             <CameraPoseCalibration 
-                                mocapState={mocapState}
+                                mocapMode={mocapMode}
                                 cameraPoses={cameraPoses}
                                 setParsedCapturedPointsForPose={setParsedCapturedPointsForPose} 
                             />
                         </Tab>
                         <Tab eventKey="scale" title="📏 Set scale">
                             <ScaleCalibration 
-                                mocapState={mocapState}
+                                mocapMode={mocapMode}
                                 cameraPoses={cameraPoses}
                                 objectPoints={objectPoints}
                             />
                         </Tab>
                         <Tab eventKey="align" title="→ Align">
                             <AlignmentCalibration
-                                mocapState={mocapState}
+                                mocapMode={mocapMode}
                                 cameraPoses={cameraPoses}
                                 toWorldCoordsMatrix={toWorldCoordsMatrix}
                                 objectPoints={objectPoints}
@@ -78,7 +78,7 @@ export default function Configure({
                         </Tab>
                         <Tab eventKey="origin" title="Ｘ Set origin">
                             <OriginCalibration 
-                                mocapState={mocapState}
+                                mocapMode={mocapMode}
                                 cameraPoses={cameraPoses}
                                 toWorldCoordsMatrix={toWorldCoordsMatrix}
                                 objectPoints={objectPoints}

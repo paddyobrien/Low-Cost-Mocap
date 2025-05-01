@@ -1,6 +1,6 @@
 
 // This enum is also defined in cameras.py in the back end, keep them in sync
-export enum States {
+export enum Modes {
     Initializing = -1,
     CamerasNotFound = 0,
     CamerasFound = 1,

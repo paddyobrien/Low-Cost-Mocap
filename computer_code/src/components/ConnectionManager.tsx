@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { socket } from '../lib/socket';
 import Modal from './Modal';
-import { States } from '../lib/states';
+import { Modes } from '../lib/modes';
 
 async function getState() {
     const url = "http://localhost:3001/api/camera_state";
@@ -18,7 +18,7 @@ async function getState() {
     }
   }
 
-export default function ConnectionManager({updateState}:{updateState: (s: States) => void}) {
+export default function ConnectionManager({updateState}:{updateState: (s: Modes) => void}) {
     const [isConnected, setIsConnected] = useState(socket.connected);
     useEffect(() => {
         socket.on("disconnect", () => {
@@ -33,7 +33,8 @@ export default function ConnectionManager({updateState}:{updateState: (s: States
         socket.on("connect", async () => {
             setIsConnected(true);
             const json = await getState();
-            updateState(json.state as States);
+            console.log(json)
+            updateState(json);
         });
         return () => {
             socket.off("connect")

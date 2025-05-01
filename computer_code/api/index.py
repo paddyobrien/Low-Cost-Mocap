@@ -1,15 +1,14 @@
-from sklearn.linear_model import RANSACRegressor
 import time
 import cv2 as cv
 import numpy as np
-from scipy import linalg
+
 
 from flask import Flask, Response, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
 
 from settings import intrinsic_matrices
-from cameras import Cameras
+from mocap_system import MocapSystem
 from helpers import (
     camera_poses_to_serializable,
     calculate_reprojection_errors,
@@ -29,10 +28,10 @@ def camera_stream():
         print("is none")
     else:
         camera = int(camera)
-    cameras = Cameras.instance()
-    cameras.set_socketio(socketio)
+    mocapSystem = MocapSystem.instance()
+    mocapSystem.set_socketio(socketio)
 
-    def gen(cameras, camera):
+    def gen(mocapSystem, camera):
         last_frame_time = 0
         frame_size = 20
         i = 0
@@ -46,7 +45,7 @@ def camera_stream():
                 socketio.emit("fps", {"fps": round(1 / fps_frame_average)})
                 last_frame_time = time.time()
 
-            frames = cameras.get_frames(camera)
+            frames = mocapSystem.get_frames(camera)
             jpeg_frame = cv.imencode(".jpg", frames)[1].tobytes()
 
             yield (
@@ -55,20 +54,20 @@ def camera_stream():
             )
 
     return Response(
-        gen(cameras, camera), mimetype="multipart/x-mixed-replace; boundary=frame"
+        gen(mocapSystem, camera), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
 
 @app.route("/api/camera_state")
 def camera_state():
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
 
-    return {"state": cameras.capture_state}
+    return mocapSystem.state()
 
 @socketio.on("acquire-floor")
 def acquire_floor(data):
     # @socketio.on("acquire-floor")
 # def acquire_floor(data):
-#     cameras = Cameras.instance()
+#     mocapSystem = MocapSystem.instance()
 #     object_points = data["objectPoints"]
 #     object_points = np.array([item for sublist in object_points for item in sublist])
 
@@ -121,15 +120,15 @@ def acquire_floor(data):
 
 #     R = R @ [[1, 0, 0], [0, -1, 0], [0, 0, 1]]  # i dont fucking know why
 
-#     cameras.to_world_coords_matrix = np.array(
+#     MocapSystem.to_world_coords_matrix = np.array(
 #         np.vstack((np.c_[R, [0, 0, 0]], [[0, 0, 0, 1]]))
 #     )
 
 #     socketio.emit(
 #         "to-world-coords-matrix",
-#         {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
+#         {"to_world_coords_matrix": MocapSystem.to_world_coords_matrix.tolist()},
 #     )
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
     object_points = np.array([item for sublist in data["objectPoints"] for item in sublist])
     
     # 1. Fit floor plane (SVD)
@@ -151,7 +150,7 @@ def acquire_floor(data):
     rotation = np.eye(3) + kmat + kmat @ kmat * (1 / (1 + c_theta))
 
     # 4. Apply rotation to existing matrix
-    existing_matrix = np.array(cameras.to_world_coords_matrix)
+    existing_matrix = np.array(mocapSystem.to_world_coords_matrix)
     new_matrix = existing_matrix.copy()
     new_matrix[:3, :3] = rotation @ existing_matrix[:3, :3]
 
@@ -171,7 +170,7 @@ def acquire_floor(data):
     new_matrix[2, 3] = -np.dot(target_normal, centroid)
 
     # 8. Update system
-    cameras.to_world_coords_matrix = new_matrix
+    mocapSystem.to_world_coords_matrix = new_matrix
     socketio.emit(
         "to-world-coords-matrix",
         {"to_world_coords_matrix": new_matrix.tolist()},
@@ -180,7 +179,7 @@ def acquire_floor(data):
 
 @socketio.on("set-origin")
 def set_origin(data):
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
     object_point = np.array(data["objectPoint"])
     to_world_coords_matrix = np.array(data["toWorldCoordsMatrix"])
     transform_matrix = np.eye(4)
@@ -192,22 +191,22 @@ def set_origin(data):
     transform_matrix[:3, 3] = -object_point
 
     to_world_coords_matrix = transform_matrix @ to_world_coords_matrix
-    cameras.to_world_coords_matrix = to_world_coords_matrix
+    mocapSystem.to_world_coords_matrix = to_world_coords_matrix
 
     socketio.emit(
         "to-world-coords-matrix",
-        {"to_world_coords_matrix": cameras.to_world_coords_matrix.tolist()},
+        {"to_world_coords_matrix": mocapSystem.to_world_coords_matrix.tolist()},
     )
 
 @socketio.on("update-camera-settings")
 def change_camera_settings(data):
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
 
-    cameras.edit_settings(data["exposure"], data["gain"])
+    mocapSystem.edit_settings(data["exposure"], data["gain"])
 
 @socketio.on("calculate-bundle-adjustment")
 def calculate_bundle_adjustment(data):
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
     image_points = np.array(data["cameraPoints"])
     camera_poses = camera_pose_to_internal(data["cameraPoses"])
     camera_poses = bundle_adjustment(image_points, camera_poses)
@@ -217,7 +216,7 @@ def calculate_bundle_adjustment(data):
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
     print(f"New pose computed, average reprojection error: {error}")
-    cameras.set_camera_poses(camera_poses)
+    mocapSystem.set_camera_poses(camera_poses)
 
     socketio.emit(
         "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
@@ -226,13 +225,13 @@ def calculate_bundle_adjustment(data):
 
 @socketio.on("calculate-camera-pose")
 def calculate_camera_pose(data):
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
     image_points = np.array(data["cameraPoints"])
 
     image_points_t = image_points.transpose((1, 0, 2))
 
     camera_poses = [{"R": np.eye(3), "t": np.array([[0], [0], [0]], dtype=np.float32)}]
-    for camera_i in range(0, cameras.num_cameras - 1):
+    for camera_i in range(0, mocapSystem.num_cams - 1):
         camera1_image_points = image_points_t[camera_i]
         camera2_image_points = image_points_t[camera_i + 1]
         not_none_indicies = np.where(
@@ -299,39 +298,34 @@ def calculate_camera_pose(data):
         calculate_reprojection_errors(image_points, object_points, camera_poses)
     )
     print(f"New pose computed, average reprojection error: {error}")
-    cameras.set_camera_poses(camera_poses)
+    mocapSystem.set_camera_poses(camera_poses)
 
     socketio.emit(
         "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
     )
     socketio.emit("success", f"Camera pose updated {error}")
 
-@socketio.on("locate-objects")
-def start_or_stop_locating_objects(data):
-    cameras = Cameras.instance()
-    start_or_stop = data["startOrStop"]
+@socketio.on("set-camera-poses")
+def set_camera_poses(data):
+    poses = data["cameraPoses"]
+    mocapSystem = MocapSystem.instance()
+    mocapSystem.set_camera_poses(poses)
 
-    if start_or_stop == "start":
-        cameras.start_locating_objects()
-        return
-    elif start_or_stop == "stop":
-        cameras.stop_locating_objects()
-
-@socketio.on("change-mocap-state")
-def change_mocap_state(data):
-    cameras = Cameras.instance()
-    cameras.change_state(data)
+@socketio.on("change-mocap-mode")
+def change_mocap_mode(data):
+    mocapSystem = MocapSystem.instance()
+    mocapSystem.change_mode(data)
 
 @socketio.on("capture_image")
 def capture_image():
-    cameras = Cameras.instance()
-    cameras.save_image()
+    mocapSystem = MocapSystem.instance()
+    mocapSystem.save_image()
 
 @socketio.on("determine-scale")
 def determine_scale(data):
     object_points = data["objectPoints"]
-    cameras = Cameras.instance()
-    camera_poses = cameras.camera_poses
+    mocapSystem = MocapSystem.instance()
+    camera_poses = mocapSystem.camera_poses
     actual_distance = 0.119
     observed_distances = []
 
@@ -351,17 +345,17 @@ def determine_scale(data):
     
     for i in range(0, len(camera_poses)):
         camera_poses[i]["t"] = (np.array(camera_poses[i]["t"]) * scale_factor).tolist()
-    cameras.set_camera_poses(camera_poses)
+    mocapSystem.set_camera_poses(camera_poses)
     socketio.emit("camera-pose", {"error": None, "camera_poses": camera_poses})
 
 
 if __name__ == "__main__":
-    cameras = Cameras.instance()
+    mocapSystem = MocapSystem.instance()
     try:
         socketio.run(app, port=3001, debug=True, use_reloader=False)
         socketio.emit("started")
     finally:
-        print("\nReleasing cameras")
-        cameras.end()
+        print("\nReleasing MocapSystem")
+        mocapSystem.end()
         socketio.emit("stopped")
         print("\nGoodbye")
