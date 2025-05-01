@@ -16,6 +16,9 @@ import Logo from './components/Logo';
 import ModeControlBar from './components/ModeControlBar';
 import useSocketListener from './hooks/useSocketListener';
 
+export const LS_POSE_KEY = "CAMERA_POSE";
+export const LS_WORLD_KEY = "WORLD_MATRIX";
+
 export default function App() {
   const [mocapMode, setMocapMode] = useState(Modes.ImageProcessing);
   const [hasCameraPose, setHasCameraPose] = useState(false);
@@ -28,8 +31,21 @@ export default function App() {
   const objectPointErrors = useRef<Array<Array<number>>>([])
   const [lastObjectPointTimestamp, setLastObjectPointTimestamp] = useState(0);
 
-  const [cameraPoses, setCameraPoses] = useState<Array<object>>(defaultCameraPose);
-  const [toWorldCoordsMatrix, setToWorldCoordsMatrix] = useState<number[][]>(defaultWorldMatrix)
+  const [cameraPoses, setCameraPoses] = useState<Array<object>>(() => {
+    const savedPose = localStorage.getItem(LS_POSE_KEY)
+    if (savedPose) {
+      return JSON.parse(savedPose);
+    }
+    return defaultCameraPose
+  });
+  console.log(cameraPoses)
+  const [toWorldCoordsMatrix, setToWorldCoordsMatrix] = useState<number[][]>(() => {
+    const saved = localStorage.getItem(LS_WORLD_KEY)
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return defaultWorldMatrix
+  })
 
   useSocketListener("object-points",  (data) => {
     setLastObjectPointTimestamp(data["time_ms"])

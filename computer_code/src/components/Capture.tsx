@@ -38,6 +38,16 @@ export default function Capture({mocapMode, objectPoints, objectPointErrors, las
 
     const canRecord = mocapMode === Modes.Triangulation && currentCaptureName !== "";
 
+    const downloadZipFile = useCallback(() => {
+        createZipFile(
+            currentCaptureName, 
+            objectPointTimes.current, 
+            objectPoints.current, 
+            objectPointErrors.current, 
+            imagePoints.current
+        )
+    }, [currentCaptureName])
+
     const stopRecording = useCallback(() => {
         createZipFile(
             currentCaptureName, 
@@ -89,6 +99,17 @@ export default function Capture({mocapMode, objectPoints, objectPointErrors, las
                         Stop
                     </Button>
                     {objectPoints.current.length} samples captured
+                </>
+            }
+            {!isRecording && objectPoints.current.length > 0 && 
+                <>
+                    <Button
+                        size='sm'
+                        className="mr-2"
+                        variant="outline-danger"
+                        onClick={downloadZipFile}>
+                        Download last recording
+                    </Button>
                 </>
             }
             </Col>

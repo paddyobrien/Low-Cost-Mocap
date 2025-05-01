@@ -2,11 +2,12 @@ import { Button, Col, Container, Form, Row, Tab, Tabs } from "react-bootstrap"
 import CameraPoseCalibration from "./CameraPoseCalibration"
 import { socket } from "../lib/socket"
 import { Modes } from "../lib/modes"
-import { MutableRefObject, useRef } from "react"
+import { MutableRefObject, useCallback, useRef, useState } from "react"
 import SmallHeader from "./SmallHeader"
 import ScaleCalibration from "./ScaleCalibration"
 import AlignmentCalibration from "./AlignmentCalibration"
 import OriginCalibration from "./OriginCalibration"
+import { LS_POSE_KEY, LS_WORLD_KEY } from "../App"
 
 interface Props {
     mocapMode: Modes,
@@ -31,27 +32,25 @@ export default function Configure({
     setParsedCapturedPointsForPose,
     setLastObjectPointTimestamp
 }: Props) {
-    const isTriangulatingPoints = mocapMode >= Modes.Triangulation;
+    const [isSaved, setIsSaved] = useState(false)
+    const saveCameraPoses = useCallback(() => {
+        socket.emit("set-camera-poses", {cameraPoses})
+        localStorage.setItem(LS_POSE_KEY, JSON.stringify(cameraPoses))
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2000)
+    }, [cameraPoses])
+
+    const [isSavedWorld, setIsSavedWorld] = useState(false)
+    const saveWorldMatrix = useCallback(() => {
+        socket.emit("set-to-world-matrix", {toWorldCoordsMatrix})
+        localStorage.setItem(LS_WORLD_KEY, JSON.stringify(toWorldCoordsMatrix))
+        setIsSavedWorld(true);
+        setTimeout(() => setIsSavedWorld(false), 2000)
+    }, [toWorldCoordsMatrix])
+    
     return (
         <Container fluid={true} className="p-2 shadow-lg container-card">
-            <Row>
-                <Col>
-                    <SmallHeader>Current camera pose</SmallHeader>
-                    <Form.Control
-                        value={JSON.stringify(cameraPoses)}
-                        onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
-                    />
-                </Col>
-            </Row>
-            <Row className="mb-4">
-                <Col xs={4} className='pt-2'>
-                    <SmallHeader>Current To World Matrix:</SmallHeader>
-                    <Form.Control
-                        value={JSON.stringify(toWorldCoordsMatrix)}
-                        onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
-                    />
-                </Col>
-            </Row>
+            
             <Row>
                 <Col>
                     <Tabs
@@ -90,6 +89,34 @@ export default function Configure({
                                 toWorldCoordsMatrix={toWorldCoordsMatrix}
                                 objectPoints={objectPoints}
                             />
+                        </Tab>
+                        <Tab eventKey="current" title="📄 Current Config">
+                            <Container fluid={true} className="pb-4 container-card">
+                                <Row>
+                                    <Col>
+                                        <SmallHeader>Current camera pose</SmallHeader>
+                                        <Form.Control
+                                            as="textarea" rows={3}
+                                            value={JSON.stringify(cameraPoses)}
+                                            onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
+                                        />
+                                        <Button className="mt-2" variant="outline-primary" onClick={saveCameraPoses}>Save</Button>
+                                        <span>{isSaved && "Poses saved!"}</span>
+                                    </Col>
+                                </Row>
+                                <Row className="mb-4">
+                                    <Col xs={4} className='pt-2'>
+                                        <SmallHeader>Current To World Matrix:</SmallHeader>
+                                        <Form.Control
+                                            as="textarea" rows={3}
+                                            value={JSON.stringify(toWorldCoordsMatrix)}
+                                            onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
+                                        />
+                                        <Button className="mt-2" variant="outline-primary" onClick={saveWorldMatrix}>Save</Button>
+                                        <span>{isSavedWorld && "World matrix saved!"}</span>
+                                    </Col>
+                                </Row>
+                            </Container>
                         </Tab>
                     </Tabs>
                 </Col>
