@@ -4,6 +4,7 @@ import InfoTooltip from "./InfoTooltip"
 import { socket } from "../lib/socket"
 import { Modes } from "../lib/modes"
 import SmallHeader from "./SmallHeader"
+import useSocketListener from "../hooks/useSocketListener"
 
 interface Props {
     mocapMode: Modes,
@@ -14,24 +15,15 @@ interface Props {
 
 export default function OriginCalibration({mocapMode, toWorldCoordsMatrix, cameraPoses, objectPoints}: Props) {
     const [captureNextPoint, setCaptureNextPoint] = useState(false)
-    useEffect(() => {
-        objectPoints.current = [];
-    }, [])
-    useEffect(() => {
-        socket.on("object-points", (data) => {
-            if (captureNextPoint) {
-                data["object_points"]
-                socket.emit("set-origin", { objectPoint: objectPoints.current[0][0], toWorldCoordsMatrix })
-                objectPoints.current.push()
-            }
-        })
-    
-        return () => {
-          socket.off("object-points")
+    useSocketListener("object-points", (data) => {
+        if (captureNextPoint) {
+            debugger;
+            socket.emit("set-origin", { objectPoint: data["object_points"][0], toWorldCoordsMatrix })
+            setCaptureNextPoint(false)
         }
-      }, [captureNextPoint, toWorldCoordsMatrix])
+    })
+   
     const objectPointsEnabled = mocapMode >= Modes.Triangulation
-    const countOfPoints = objectPoints.current.length
     return (
         <Container fluid={true} className="container-card">
             <Row className="pt-2">

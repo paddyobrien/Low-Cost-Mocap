@@ -59,9 +59,21 @@ export default function Configure({
         setIsSavedWorld(true);
         setTimeout(() => setIsSavedWorld(false), 2000)
     }, [toWorldCoordsMatrix])
+
+    const [isLoadedMatrix, setLoadedMatrix] = useState(false)
+    const loadWorldMatrix = useCallback(() => {
+        const saved = localStorage.getItem(LS_WORLD_KEY);
+        if (saved) {
+            const matrix = JSON.parse(saved);
+            setToWorldCoordsMatrix(matrix);
+            socket.emit("set-to-world-matrix", {toWorldCoordsMatrix})
+            setLoadedMatrix(true);
+            setTimeout(() => setLoadedMatrix(false), 2000)
+        }
+    }, [cameraPoses])
     
     return (
-        <Container fluid={true} className="p-2 shadow-lg container-card">
+        <Container fluid={true} className="p-2 shadow-md container-card">
             
             <Row>
                 <Col>
@@ -127,7 +139,9 @@ export default function Configure({
                                             onChange={(event) => setToWorldCoordsMatrix(JSON.parse(event.target.value))}
                                         />
                                         <Button className="mt-2" variant="outline-primary" onClick={saveWorldMatrix}>Save</Button>
+                                        <Button className="mt-2 mr-2" variant="outline-primary" onClick={loadWorldMatrix}>Load</Button>
                                         <span>{isSavedWorld && "World matrix saved!"}</span>
+                                        <span>{isLoadedMatrix && "World matrix loaded!"}</span>
                                     </Col>
                                 </Row>
                             </Container>

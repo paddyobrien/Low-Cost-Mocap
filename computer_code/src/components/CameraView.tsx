@@ -32,7 +32,7 @@ export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Pro
     }, [])
     
     return (
-        <Container fluid={true} className="p-2 shadow-lg container-card">
+        <Container fluid={true} className="p-2 shadow-md container-card">
             <Row>
                 <Col>
                     <Button

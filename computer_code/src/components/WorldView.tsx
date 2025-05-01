@@ -16,9 +16,9 @@ interface Props {
 
 export default function WorldView({ cameraPoses, toWorldCoordsMatrix, objectPoints, objectPointErrors, objectPointCount, filteredObjects }: Props) {
     return (
-        <Container fluid={true} className="p-2 shadow-lg container-card">
+        <Container fluid={true} className="p-2 shadow-md container-card">
             <Row className='mt-2 mb-1' style={{ height: "420px" }}>
-                <Canvas orthographic camera={{ zoom: 1000, position: [0, 0, 10] }}>
+                <Canvas orthographic camera={{ zoom: 500, position: [10, 10, 10] }}>
                     <ambientLight />
                     {cameraPoses.map(({ R, t }, i) => (
                         <CameraWireframe R={R} t={t} toWorldCoordsMatrix={toWorldCoordsMatrix} key={i} />

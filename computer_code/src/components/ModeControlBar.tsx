@@ -26,28 +26,28 @@ export default function ModeControlBar({mocapMode, setMocapMode} : Props) {
 
     return (
         <>
-            <div className="mode-control-bar shadow-lg">
+            <div className="mode-control-bar shadow-md">
                 <Button
                     size="sm"
                     className="mr-2"
                     variant="outline-secondary"
                     disabled={mocapMode > Modes.ImageProcessing}
                     onClick={() => changeMode(mocapMode === Modes.CamerasFound ? Modes.ImageProcessing : Modes.CamerasFound)}
-                >{processingEnabled ? "⏹️ Stop Image Processing": "🎆 Enable Image Processing"}</Button>
+                >{processingEnabled ? "✅ Image processing": "🎆 Enable image processing"}</Button>
                 <Button
                     size="sm"
                     className="mr-2"
                     variant="outline-secondary"
                     disabled={mocapMode < Modes.ImageProcessing || mocapMode > Modes.PointCapture}
                     onClick={() => changeMode(mocapMode === Modes.PointCapture ? Modes.ImageProcessing : Modes.PointCapture)}
-                >{pointCaptureEnabled ? "⏹️ Stop Point Capture": "👉 Enable Point Capture"}</Button>
+                >{pointCaptureEnabled ? "✅ Capturing points": "👉 Enable point capture"}</Button>
                 <Button
                     size="sm"
                     className="mr-2"
                     variant="outline-secondary"
                     disabled={mocapMode < Modes.PointCapture || mocapMode > Modes.Triangulation}
                     onClick={() => changeMode(mocapMode === Modes.PointCapture ? Modes.Triangulation : Modes.PointCapture)}
-                >{triangulationEnabled ? "⏹️ Stop Triangulating": "◢ Enable Triangulation"}</Button>
+                >{triangulationEnabled ? "✅ Triangulating": "◢ Enable Triangulation"}</Button>
             </div>
         
             <ToastContainer position="bottom-center">

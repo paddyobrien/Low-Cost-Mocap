@@ -60,7 +60,7 @@ export default function Capture({mocapMode, objectPoints, objectPointErrors, las
     }, [currentCaptureName, isRecording])
 
     return (
-        <Container fluid={true} className="pb-2 shadow-lg container-card">
+        <Container fluid={true} className="pb-2 shadow-md container-card">
             <Row>
                 <Col>
                     <SmallHeader>Recording Name</SmallHeader>
