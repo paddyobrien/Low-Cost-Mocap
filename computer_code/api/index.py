@@ -219,9 +219,11 @@ def calculate_bundle_adjustment(data):
     mocapSystem.set_camera_poses(camera_poses)
 
     socketio.emit(
-        "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
+        "camera-pose", {
+            "camera_poses": camera_poses_to_serializable(camera_poses),
+            "error": error
+        },
     )
-    socketio.emit("success", f"Camera pose updated {error}")
 
 @socketio.on("calculate-camera-pose")
 def calculate_camera_pose(data):
@@ -301,15 +303,23 @@ def calculate_camera_pose(data):
     mocapSystem.set_camera_poses(camera_poses)
 
     socketio.emit(
-        "camera-pose", {"camera_poses": camera_poses_to_serializable(camera_poses)}
+        "camera-pose", {
+            "camera_poses": camera_poses_to_serializable(camera_poses),
+            "error": error
+        }
     )
-    socketio.emit("success", f"Camera pose updated {error}")
-
 @socketio.on("set-camera-poses")
 def set_camera_poses(data):
     poses = data["cameraPoses"]
     mocapSystem = MocapSystem.instance()
     mocapSystem.set_camera_poses(poses)
+
+@socketio.on("set-to-world-matrix")
+def set_to_world_matrix(data):
+    m = data["toWorldCoordsMatrix"]
+    
+    mocapSystem = MocapSystem.instance()
+    mocapSystem.to_world_coords_matrix= m 
 
 @socketio.on("change-mocap-mode")
 def change_mocap_mode(data):
@@ -352,6 +362,7 @@ def determine_scale(data):
 if __name__ == "__main__":
     mocapSystem = MocapSystem.instance()
     try:
+        mocapSystem.set_socketio(socketio)
         socketio.run(app, port=3001, debug=True, use_reloader=False)
         socketio.emit("started")
     finally:

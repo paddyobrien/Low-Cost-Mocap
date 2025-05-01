@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { socket } from '../lib/socket';
-import { Button, Col, Container, Overlay, Row } from 'react-bootstrap';
+import { Button, Col, Container, Row } from 'react-bootstrap';
 import { Modes } from '../lib/modes';
 import InfoTooltip from './InfoTooltip';
 import useSocketListener from '../hooks/useSocketListener';
 import SmallHeader from './SmallHeader';
+import Toast from 'react-bootstrap/Toast';
+import { ToastContainer } from 'react-bootstrap';
 
 const isValidJson = (str: string) => {
     try {
@@ -26,6 +28,8 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
     const [isCalculatingPose, setIsCalculatingPose] = useState(false);
     const [captureNextPointForPose, setCaptureNextPointForPose] = useState(false)
     const [capturedPointsForPose, setCapturedPointsForPose] = useState("");
+    const [showPoseCalibrationResult, setShowPoseCalibrationResult] = useState(false)
+    const [reprojectionError, setReprojectionError] = useState(0);
     useEffect(() => {
         const handler = (data: any) => {
             if (captureNextPointForPose) {
@@ -50,7 +54,12 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
         setIsCalculatingPose(true);
         socket.emit("calculate-bundle-adjustment", { cameraPoints, cameraPoses })
     }
-    useSocketListener("camera-pose", () => setIsCalculatingPose(false));
+    useSocketListener("camera-pose", (data) => {
+        setIsCalculatingPose(false);
+        setShowPoseCalibrationResult(true);
+        console.log(data)
+        setReprojectionError(data.error)
+    });
 
     const parsedPoints = isValidJson(`[${capturedPointsForPose.slice(0, -1)}]`) ? JSON.parse(`[${capturedPointsForPose.slice(0, -1)}]`) : [];
     const countOfPointsForCameraPoseCalibration =  parsedPoints.length;
@@ -137,6 +146,23 @@ export default function CameraPoseCalibration({ mocapMode, cameraPoses, setParse
                     {isCalculatingPose && <span>Calculating...</span>}
                 </Col>
             </Row>
+            <ToastContainer position="bottom-center">
+                <Toast show={showPoseCalibrationResult} onClose={() => setShowPoseCalibrationResult(false)}>
+                    <Toast.Header>
+                        <img src="holder.js/20x20?text=%20" className="rounded me-2" alt="" />
+                        <strong className="me-auto">Pose calibration finished</strong>
+                    </Toast.Header>
+                    <Toast.Body>Average reprojection error {Math.round(reprojectionError*100)/100}px. 
+                        <p>
+                            This error level is 
+                        {reprojectionError <= 1 && " excellent"}
+                        {reprojectionError > 1 && reprojectionError <= 3 && " OK"}
+                        {reprojectionError > 3 && reprojectionError <= 10 && " poor"}
+                        {reprojectionError > 10 && " not good enough."}
+                        </p>
+                    </Toast.Body>
+                </Toast>
+            </ToastContainer>
         </Container>
     </>
 }

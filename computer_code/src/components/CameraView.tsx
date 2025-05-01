@@ -17,15 +17,31 @@ interface Props {
 export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Props) {
     const [fps, setFps] = useState(0);
     const [numCams, setNumCams] = useState(0);
+    const [refreshingImage, setRefreshingImage] = useState(false);
     useSocketListener("fps", data => {
         setFps([data["fps"]])
     })
     useSocketListener("num-cams", setNumCams)
+    const refreshImage = useCallback(() => {
+        setRefreshingImage(true);
+        setTimeout(() => {
+            setRefreshingImage(false)
+        }, 500)
+    }, [])
     
     return (
         <Container fluid={true} className="p-2 shadow-lg container-card">
             <Row>
                 <Col>
+                    <Button
+                        size="sm"
+                        className="me-3"
+                        variant="outline-secondary"
+                        onClick={refreshImage}
+                        disabled={mocapMode === Modes.CamerasFound}
+                    >
+                    🔄 Refresh stream
+                    </Button>
                     <CameraSettings />
                     <InfoTooltip disabled={mocapMode === Modes.CamerasFound} message="Image processing must be disabled">
                         <Button
@@ -46,7 +62,9 @@ export default function CameraView({mocapMode, parsedCapturedPointsForPose}: Pro
             <Row className='mt-2 mb-1' style={{ height: "320px" }}>
                 <Col style={{ "position": "relative", paddingLeft: 10 }}>
                     {mocapMode > Modes.CamerasNotFound ? 
-                        <><img src={`${BASEURL}`} /><PosePoints numCams={numCams} points={parsedCapturedPointsForPose} /></>
+                            !refreshingImage &&
+                            <><img src={`${BASEURL}`} /><PosePoints numCams={numCams} points={parsedCapturedPointsForPose} /></> 
+                        
                         : 
                         <div className="centered" style={{height: "300px", color: "#dc3545"}}>No cameras found!</div> }
                       

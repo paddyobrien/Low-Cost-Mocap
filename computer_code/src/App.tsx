@@ -1,18 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Card, Col, Container, Row } from 'react-bootstrap';
-import { Tooltip } from 'react-tooltip'
+import { Col, Container, Row } from 'react-bootstrap';
 import { socket } from './lib/socket';
 import { defaultCameraPose, defaultWorldMatrix } from './defaultCameraPose';
-import DownloadControls from './components/DownloadControls';
 import ConnectionManager from './components/ConnectionManager';
 import WorldView from './components/WorldView';
 import CameraView from './components/CameraView';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 import { Modes } from './lib/modes';
-import useSocketListener from './hooks/useSocketListener';
 import Configure from './components/Configure';
 import Capture from './components/Capture';
 import Logo from './components/Logo';
@@ -64,6 +61,7 @@ export default function App() {
     }
   }, [])
 
+  // TODO - Update exposure here too
   const stateUpdater = useCallback((data) => {
     setMocapMode(data.mode)
     if (!data.camera_poses) {
