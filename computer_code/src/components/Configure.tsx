@@ -40,6 +40,18 @@ export default function Configure({
         setTimeout(() => setIsSaved(false), 2000)
     }, [cameraPoses])
 
+    const [isLoaded, setIsLoaded] = useState(false)
+    const loadCameraPoses = useCallback(() => {
+        const savedPoses = localStorage.getItem(LS_POSE_KEY);
+        if (savedPoses) {
+            const cameraPoses = JSON.parse(savedPoses);
+            setCameraPoses(cameraPoses);
+            socket.emit("set-camera-poses", {cameraPoses})
+            setIsLoaded(true);
+            setTimeout(() => setIsLoaded(false), 2000)
+        }
+    }, [cameraPoses])
+
     const [isSavedWorld, setIsSavedWorld] = useState(false)
     const saveWorldMatrix = useCallback(() => {
         socket.emit("set-to-world-matrix", {toWorldCoordsMatrix})
@@ -100,8 +112,10 @@ export default function Configure({
                                             value={JSON.stringify(cameraPoses)}
                                             onChange={(event) => setCameraPoses(JSON.parse(event.target.value))}
                                         />
-                                        <Button className="mt-2" variant="outline-primary" onClick={saveCameraPoses}>Save</Button>
+                                        <Button className="mt-2 mr-2" variant="outline-primary" onClick={saveCameraPoses}>Save</Button>
+                                        <Button className="mt-2 mr-2" variant="outline-primary" onClick={loadCameraPoses}>Load</Button>
                                         <span>{isSaved && "Poses saved!"}</span>
+                                        <span>{isLoaded && "Poses loaded"}</span>
                                     </Col>
                                 </Row>
                                 <Row className="mb-4">
