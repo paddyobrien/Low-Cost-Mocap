@@ -41,3 +41,14 @@ My blog post has some more information about the drones & camera: [joshuabird.co
 This motion capture system is an "outside-in" system, with external cameras tracking objects within a fixed space. There are also "inside-out" systems which use cameras on the drones/robots to determine their locations, not requiring any external infrastructure. 
 
 My undergraduate dissertation presents such a system, which is capable of localizing multiple agents within a world in real time using purely visual data, with state-of-the-art performance. Check it out here: [https://github.com/jyjblrd/distributed_visual_SLAM](https://github.com/jyjblrd/distributed_visual_SLAM)
+
+
+## Camera setup process
+
+In order to calculate camera poses you must do a few things:
+
+1. Make sure you camera intrinsics in `camera_params.json` are correct. If using the standard lense the provided provided params should be correct. If using your own lenses follow [this guide](https://github.com/jyjblrd/Low-Cost-Mocap/discussions/11#discussioncomment-9380283).
+2. To calibrate the camera positions click the "Collect points for camera pose calibration" button on the web interface, and move a single marker / IR led randomly throughout the capture area. Each frame where the marker can be seen by 2+ cameras will be recorded as a correspondence point. It works better when there are only a couple dozen points captured so pulsing the light is a good idea. Make sure that they you are moving the marker around in 3d space throughout the whole field of view of all the cameras. Be really careful not to move the cameras after calibration. Once done press the "Calculate camera pose with x points" button.
+3. Then, you need to wave around a wand with two markers spaced 15cm apart. Record the points as before and then press "Set Scale Using Points"
+4. Finally calibrating the floor is done using two steps. Firstly a marker is rolled around on the floor to calibrate the floor location using the "Acquire Floor" button. Then, a marker is placed at the origin to calibrate the world origin location using the "Set Origin" button.
+

@@ -1,0 +1,1 @@
+    cmake -DOPENCV_EXTRA_MODULES_PATH=/Users/patrickobrien/src/opencv_contrib/modules_install -DPYTHON3_EXECUTABLE=/Users/patrickobrien/.pyenv/shims/python3 -DPYTHON3_INCLUDE_DIR=/opt/homebrew/lib/python3.11/site-packages -DPYTHON3_NUMPY_INCLUDE_DIRS=/opt/homebrew/lib/python3.11/site-packages/numpy/_core/include/ ..

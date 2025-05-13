@@ -12,7 +12,7 @@ export default function Modal({headerText, bodyText, variant="danger", dismissib
     return (
         <>
             <div style={{
-                zIndex: 1,
+                zIndex: 200,
                 position: "fixed",
                 left: 0,
                 width: "100%",
@@ -23,7 +23,7 @@ export default function Modal({headerText, bodyText, variant="danger", dismissib
             }} />
             <Toast bg={variant} show={true} style={{
                 position: "fixed",
-                zIndex: 3,
+                zIndex: 300,
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)"

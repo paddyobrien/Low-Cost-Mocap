@@ -1,0 +1,11 @@
+- Repeatable build
+    - Get python package manager setup
+    - Decide if docker or a local setup is easier
+- Add a configuration object for intrinsics, pose etc
+    - Really get a better model in the backend
+    - Assign stable indexes to cameras
+        - USB identified not exposed would need upstream changes in pseyepy
+- Stop using socketio for request/response
+- Better config management
+- Sync exposure and gain
+- Expose intrinsics to ui
